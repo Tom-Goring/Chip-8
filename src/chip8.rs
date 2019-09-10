@@ -34,7 +34,5 @@ impl Chip8 {
 			keyboard: [false; NUM_KEYS],
 			display: [false; DISPLAY_SIZE],
 		 }
-
-
 	}
 }

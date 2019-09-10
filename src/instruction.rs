@@ -4,8 +4,8 @@ pub enum Instruction {
 	SYS(addr),
 	ClearScreen,
 	Return,
-	Jump(addr),
-	Call(addr),
+	JMP(addr),
+	CALL(addr),
 	SkipIfEqualToByte(Register, u8),
 	SkipIfIfNotEqualToByte(Register, u8),
 	SkipIfRegisterEqualToRegister(Register, Register),
@@ -39,3 +39,29 @@ pub enum Instruction {
 	SR, // Store Registers
 	LR // Load Registers
 }
+
+pub struct OpCodeInstruction {
+	value: u16, // All instructions are 2 bytes long BigEndian style. The first byte should be loaded at even addresses in memory. 
+				// Sprite data should be padded to maintain alignment.
+}
+
+impl OpCodeInstruction {
+	pub fn new(value: u16) -> Instruction {
+		Instruction { value: value }
+	}
+
+	pub fn processOpCode(&self) -> Option<OpCodeInstruction> {
+		// TODO: look at how 0x0 works
+		match self.value {
+			0x1 => Some(Instruction::JMP(self.value)),
+			0x2 => Some(Instruction::CALL(self.value)),
+
+
+		}
+	}
+
+	fn addr(&self) -> u8 {
+		
+	}
+}
+
