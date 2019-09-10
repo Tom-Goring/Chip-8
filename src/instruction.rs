@@ -46,22 +46,39 @@ pub struct OpCodeInstruction {
 }
 
 impl OpCodeInstruction {
-	pub fn new(value: u16) -> Instruction {
-		Instruction { value: value }
+	pub fn new(value: u16) -> OpCodeInstruction {
+		OpCodeInstruction { value: value }
 	}
 
 	pub fn processOpCode(&self) -> Option<OpCodeInstruction> {
-		// TODO: look at how 0x0 works
-		match self.value {
-			0x1 => Some(Instruction::JMP(self.value)),
-			0x2 => Some(Instruction::CALL(self.value)),
 
+		let nnn = self.nnn();
+		let n = self.n();
+		let x = self.x();
+		let y = self.y();
+		let kk = self.kk();
 
-		}
+		print!("nnn: {}, n: {}, x: {}, y: {}, kk: {}", nnn, n, x, y, kk);
 	}
 
-	fn addr(&self) -> u8 {
-		
+	fn nnn(&self) -> u8 {
+		self.value &= 0x0FFF
+	}
+
+	fn n(&self) -> u8 {
+		self.value &= 0x000F
+	}
+
+	fn x(&self) -> u8 {
+		self.value &= 0x0F00
+	}
+
+	fn y(&self) -> u8 {
+		self.value &= 0x00F0
+	}
+
+	fn kk(&self) -> u8 {
+		self.value &= 0x00FF
 	}
 }
 
