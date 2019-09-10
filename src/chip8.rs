@@ -4,6 +4,7 @@ const NUM_GENERAL_REGS: usize = 16;
 const NUM_KEYS: usize = 16;
 const DISPLAY_SIZE: usize = 64 * 32;
 
+// TODO: Finish Chip8 data structure implementation
 
 pub struct Chip8 {
 	regs: [u8; NUM_GENERAL_REGS],

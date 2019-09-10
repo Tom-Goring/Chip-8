@@ -1,4 +1,4 @@
-
+// TODO: Finish instruction implementation
 
 pub enum Instruction {
 	SYS(addr),
