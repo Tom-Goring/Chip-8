@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 const MEMORY_SIZE: usize = 4 * 1024;
 const NUM_STACK_FRAMES: usize = 16;
 const NUM_GENERAL_REGS: usize = 16;

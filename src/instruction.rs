@@ -86,11 +86,11 @@ impl OpCodeInstruction {
 	}
 
 	fn x(&self) -> u8 {
-		(self.value & 0x0F00) as u8
+		((self.value & 0x0F00) >> 8) as u8
 	}
 
 	fn y(&self) -> u8 {
-		(self.value & 0x00F0) as u8
+		((self.value & 0x00F0) >> 4) as u8
 	}
 
 	fn kk(&self) -> u8 {
