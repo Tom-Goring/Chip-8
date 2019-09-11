@@ -4,6 +4,7 @@
 pub type Address = u16;
 pub type Register = u8;
 
+#[derive(Debug)]
 pub enum Instruction {
 	SYS(Address),
 	ClearScreen,
@@ -40,10 +41,11 @@ pub enum Instruction {
 	ADDI(Register), // Add Register to address register
 	LDS(Register), // Address register set to location for the sprite corresponding to Register
 	BCD(Register), // Store BCD representation of Register in memory locations I, I+1, I+2
-	SR, // Store Registers
-	LR // Load Registers
+	SR(Register), // Store Registers
+	LR(Register) // Load Registers
 }
 
+#[derive(Debug)]
 pub struct OpCodeInstruction {
 	value: u16, // All instructions are 2 bytes long BigEndian style. The first byte should be loaded at even addresses in memory. 
 				// Sprite data should be padded to maintain alignment.
@@ -56,28 +58,77 @@ impl OpCodeInstruction {
 
 	pub fn process_opcode(&self) -> Option<Instruction> {
 
+		let i = self.i();
 		let nnn = self.nnn();
 		let n = self.n();
 		let x = self.x();
 		let y = self.y();
 		let kk = self.kk();
 
-		match nnn {
+		match i {
 			0x0 => {
 				match kk {
 					0xE0 => Some(Instruction::ClearScreen),
 					0xEE => Some(Instruction::Return),
 					_ => None,
 				}
+			},
+			0x1 => Some(Instruction::JMP(nnn)),
+			0x2 => Some(Instruction::CALL(nnn)),
+			0x3 => Some(Instruction::SkipIfEqualToByte(n, kk)),
+			0x4 => Some(Instruction::SkipIfIfNotEqualToByte(n, kk)),
+			0x5 => Some(Instruction::SkipIfRegisterEqualToRegister(x, y)),
+			0x6 => Some(Instruction::LoadByteToRegister(x, kk)),
+			0x7 => Some(Instruction::AddByteToRegister(x, kk)),
+			0x8 => {
+				match n {
+					0x0 => Some(Instruction::LoadRegisterToRegister(x, y)),
+					0x1 => Some(Instruction::OR(x, y)),
+					0x2 => Some(Instruction::AND(x, y)),
+					0x3 => Some(Instruction::XOR(x, y)),
+					0x4 => Some(Instruction::ADD(x, y)),
+					0x5 => Some(Instruction::SUB(x, y)),
+					0x6 => Some(Instruction::SHR(x)),
+					0x7 => Some(Instruction::SUBN(x, y)),
+					0xE => Some(Instruction::SHL(x)),
+					_ => None,
+				}
 			}
-
-			
-			_ => None,
-
+			0x9 => Some(Instruction::SNE(x, y)),
+			0xA => Some(Instruction::LDI(nnn)),
+			0xB => Some(Instruction::JPV0(nnn)),
+			0xC => Some(Instruction::RND(x, kk)),
+			0xD => Some(Instruction::DRW(x, y, n)),
+			0xE => {
+				match kk {
+					0x9E => Some(Instruction::SKP(x)),
+					0xA1 => Some(Instruction::SKNP(x)),
+					_ => None,
+				}
+			}
+			0xF => {
+				match kk {
+					0x07 => Some(Instruction::LDDV(x)),
+					0x0A => Some(Instruction::LDK(x)),
+					0x15 => Some(Instruction::LDVD(x)),
+					0x18 => Some(Instruction::LDST(x)),
+					0x1E => Some(Instruction::ADDI(x)),
+					0x29 => Some(Instruction::LDS(x)),
+					0x33 => Some(Instruction::BCD(x)),
+					0x55 => Some(Instruction::SR(x)),
+					0x65 => Some(Instruction::LR(x)),
+					_ => None,
+				}
+			}
+			_ => None
 		}
 	}
 
-	pub fn nnn(&self) -> u16 {
+	fn i(&self) -> u8 {
+		((self.value & 0xF000) >> 12) as u8
+	}
+
+	fn nnn(&self) -> u16 {
 		self.value & 0x0FFF
 	}
 
@@ -110,6 +161,14 @@ impl OpCodeInstruction {
 
 mod tests {
 	use super::*;
+
+	#[test]
+    fn i() {
+        let x = 39854;
+		let ins = OpCodeInstruction::new(x);
+		let y = ins.i();
+		assert!(y == 9);
+    }
 
     #[test]
     fn nnn() {
@@ -149,5 +208,12 @@ mod tests {
 		let ins = OpCodeInstruction::new(x);
 		let y = ins.kk();
 		assert!(y == 174);
+	}
+
+	#[test]
+	fn process_opcode() {
+		let raw = 39854;
+		let ins = OpCodeInstruction::new(raw);
+		println!("{:?}", ins.process_opcode());
 	}
 }
