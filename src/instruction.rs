@@ -209,11 +209,4 @@ mod tests {
 		let y = ins.kk();
 		assert!(y == 174);
 	}
-
-	#[test]
-	fn process_opcode() {
-		let raw = 39854;
-		let ins = OpCodeInstruction::new(raw);
-		println!("{:?}", ins.process_opcode());
-	}
 }
