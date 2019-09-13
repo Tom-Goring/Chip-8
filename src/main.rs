@@ -2,6 +2,8 @@
 
 extern crate sdl2; 
 
+use sdl2::keyboard::KeyboardState;
+use sdl2::rect::Rect;
 use sdl2::pixels::Color;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
@@ -18,28 +20,48 @@ fn main() {
 
 	let mut canvas = window.into_canvas().build().unwrap();
 
-	canvas.set_draw_color(Color::RGB(0, 255, 255));
-	canvas.clear();
-	canvas.present();
+	
+
+	let mut rect = Rect::new(10, 10, 10, 10);
 	
 	let mut event_pump = sdl_context.event_pump().unwrap();
-	let mut i = 0;
-	'running: loop {
-		i = (i + 1) % 255;
-		canvas.set_draw_color(Color::RGB(i, 64, 255 - i));
-		canvas.clear();
+
+	'main: loop {
 		for event in event_pump.poll_iter() {
+
+			canvas.set_draw_color(Color::RGB(0,0,0));
+			canvas.clear();
+			canvas.present();
+
+			let mut scanCodes = KeyboardState::scancodes(e: event_pump);
+
 			match event {
-				Event::Quit {..} => break 'running,
-				Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
-					break 'running
-				},
+
+				Event::Quit {..} => break 'main,
+
+				Event::KeyDown { keycode: Some(Keycode::Up), .. } => {
+					rect.y -= 10;
+				}
+
+				Event::KeyDown { keycode: Some(Keycode::Down), .. } => {
+					rect.y += 10;
+				}
+
+				Event::KeyDown { keycode: Some(Keycode::Left), .. } => {
+					rect.x -= 10;
+				}
+
+				Event::KeyDown { keycode: Some(Keycode::Right), .. } => {
+					rect.x += 10;
+				}
+
 				_ => {}
 			}
-		}
-		// stuff
-	}
 
-	canvas.present();
-	::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
+			canvas.set_draw_color(Color::RGB(255,255,255));
+			canvas.fill_rect(rect);
+			canvas.present();
+		}
+	}
+		// stuff
 }
