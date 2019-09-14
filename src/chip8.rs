@@ -1,20 +1,19 @@
 #![allow(dead_code)]
 #![allow(unused_mut)]
 
-use crate::display;
 //use crate::instruction;
 
-use std::sync::mpsc::{Sender, Receiver};
-use std::sync::mpsc;
-
-// TESTING
-
-// TESTING
+use sdl2::rect::Rect;
+use sdl2::pixels::Color;
+use sdl2::event::Event;
 
 const MEMORY_SIZE: usize = 4 * 1024;
 const NUM_STACK_FRAMES: usize = 16;
 const NUM_GENERAL_REGS: usize = 16;
 const NUM_KEYS: usize = 16;
+const PIXEL_SIZE: u32 = 20;
+const COLS: usize = 64;
+const ROWS: usize = 32;
 
 // TODO: Finish Chip8 data structure implementation
 
@@ -26,9 +25,9 @@ pub struct Chip8 {
 	memory: [u8; MEMORY_SIZE], // memory storage
 	stack: [u16; NUM_STACK_FRAMES], // stack frames
 	keyboard: [bool; NUM_KEYS], // 16 keys
-	display: display::Display, // 64 * 32 display
 	delay_timer: u8,
 	sound_timer: u8,
+	buffer: [bool; ROWS * COLS],
 }
 
 impl Chip8 {
@@ -44,32 +43,59 @@ impl Chip8 {
 			memory,
 			stack: [0; NUM_STACK_FRAMES],
 			keyboard: [false; NUM_KEYS],
-			display: display::Display::new(),
+			buffer: [false; COLS * ROWS]
 		 }
 	}
 
 	pub fn run(&mut self) {
-		let exit = false;
-		let (parent_sender, thread_receiver): (Sender<bool>, Receiver<bool>) = mpsc::channel();
-		let (thread_sender, parent_receiver): (Sender<bool>, Receiver<bool>) = mpsc::channel();
 
+		let window_height = 20 * COLS as u32;
+        let window_width = 20 * ROWS as u32;
 
-		let child = self.display.display(thread_sender, thread_receiver);
+        let sdl_context = sdl2::init().unwrap();
+        let video_subsystem = sdl_context.video().unwrap();
 
+        let window = video_subsystem.window("Chip-8", window_height, window_width)
+            .position_centered()
+            .build()
+            .unwrap();
 
-		// TODO: add a check for ending the display thread here
+        let mut canvas = window.into_canvas().build().unwrap();
+        
+        let mut event_pump = sdl_context.event_pump().unwrap();
 
-		loop {
+        'main: loop {
+			self.buffer[50] = true;
+            canvas.set_draw_color(Color::RGB(255,255,255));
+            canvas.clear();
 
-			if parent_receiver.try_recv() == Ok(false) {
-				break;
-			}
+            let mut black = false;
+            
+            for row in 0..ROWS {
+                black = !black;
+                for col in 0..COLS {
+                    let x = col as i32 * PIXEL_SIZE as i32;
+                    let y = row as i32 * PIXEL_SIZE as i32;
+                    let rect = Rect::new(x, y, PIXEL_SIZE, PIXEL_SIZE);
 
-			// game logic
+                    if self.buffer[col+row] {
+						canvas.set_draw_color(Color::RGB(0,0,0));
+					} else {
+						canvas.set_draw_color(Color::RGB(255,255,255));
+					}
 
-			// parent_sender.send(true);
-			// break;
-		}
+                    let _ = canvas.fill_rect(rect);
+                }
+            }
+
+            canvas.present();
+
+            for event in event_pump.poll_iter() {
+                if let Event::Quit {..} = event { 
+                    break 'main 
+                }
+            }
+        }
 
 		println!("Game loop ended");
 	}
