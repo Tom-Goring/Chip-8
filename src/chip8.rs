@@ -2,13 +2,13 @@
 #![allow(unused_mut)]
 
 use crate::display;
-use crate::instruction;
+//use crate::instruction;
 
 use std::sync::mpsc::{Sender, Receiver};
 use std::sync::mpsc;
 
 // TESTING
-use std::io::{self, BufRead};
+
 // TESTING
 
 const MEMORY_SIZE: usize = 4 * 1024;
@@ -41,18 +41,36 @@ impl Chip8 {
 			sound_timer: 0,
 			sp:  0,
 			pc: 0,
-			memory: memory,
+			memory,
 			stack: [0; NUM_STACK_FRAMES],
 			keyboard: [false; NUM_KEYS],
 			display: display::Display::new(),
 		 }
 	}
 
-	pub fn run(&self) {
-		let (tx, rx): (Sender<bool>, Receiver<bool>) = mpsc::channel();
-		let child = self.display.display(rx);
-		
+	pub fn run(&mut self) {
+		let exit = false;
+		let (parent_sender, thread_receiver): (Sender<bool>, Receiver<bool>) = mpsc::channel();
+		let (thread_sender, parent_receiver): (Sender<bool>, Receiver<bool>) = mpsc::channel();
+
+
+		let child = self.display.display(thread_sender, thread_receiver);
+
+
 		// TODO: add a check for ending the display thread here
-		let _ = tx.send(true);
+
+		loop {
+
+			if parent_receiver.try_recv() == Ok(false) {
+				break;
+			}
+
+			// game logic
+
+			// parent_sender.send(true);
+			// break;
+		}
+
+		println!("Game loop ended");
 	}
 }
