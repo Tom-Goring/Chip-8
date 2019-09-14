@@ -1,10 +1,9 @@
 
-use sdl2::rect::Rect;
+//use sdl2::rect::Rect;
 use sdl2::pixels::Color;
 use sdl2::event::Event;
 use std::thread;
-use std::sync::mpsc::channel;
-use std::sync::mpsc::{self, TryRecvError};
+use std::sync::mpsc::{TryRecvError};
 
 const WINDOW_HEIGHT: u32 = 800;
 const WINDOW_WIDTH: u32 = 600;
@@ -31,9 +30,10 @@ impl Display {
         COLS
     }
 
-    pub fn display(&self, rx: std::sync::mpsc::Receiver<bool>) -> std::thread::JoinHandle<()> {
+    pub fn display(&mut self, tx: std::sync::mpsc::Sender<bool>, rx: std::sync::mpsc::Receiver<bool>) -> std::thread::JoinHandle<()> {
 
-        let child = thread::spawn(move || {
+        thread::spawn(move || {
+            
             let rect_height = WINDOW_HEIGHT / ROWS as u32;
             let rect_width = WINDOW_WIDTH / COLS as u32;
 
@@ -56,9 +56,9 @@ impl Display {
                 canvas.present();
 
                 for event in event_pump.poll_iter() {
-                    match event {
-                        Event::Quit {..} => break 'main,
-                        _ => {}
+                    if let Event::Quit {..} = event { 
+                        tx.send(false);
+                        break 'main 
                     }
                 }
                 
@@ -69,8 +69,6 @@ impl Display {
                     Err(TryRecvError::Empty) | Ok(false) => {}
                 }
             }
-        });
-
-        child
+        })
     }
 }

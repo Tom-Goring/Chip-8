@@ -53,7 +53,7 @@ pub struct OpCodeInstruction {
 
 impl OpCodeInstruction {
 	pub fn new(value: u16) -> OpCodeInstruction {
-		OpCodeInstruction { value: value }
+		OpCodeInstruction { value }
 	}
 
 	pub fn process_opcode(&self) -> Option<Instruction> {
