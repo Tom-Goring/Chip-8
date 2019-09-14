@@ -4,11 +4,17 @@
 use crate::display;
 use crate::instruction;
 
+use std::sync::mpsc::{Sender, Receiver};
+use std::sync::mpsc;
+
+// TESTING
+use std::io::{self, BufRead};
+// TESTING
+
 const MEMORY_SIZE: usize = 4 * 1024;
 const NUM_STACK_FRAMES: usize = 16;
 const NUM_GENERAL_REGS: usize = 16;
 const NUM_KEYS: usize = 16;
-const DISPLAY_SIZE: usize = 64 * 32;
 
 // TODO: Finish Chip8 data structure implementation
 
@@ -42,7 +48,11 @@ impl Chip8 {
 		 }
 	}
 
-	pub fn activate_display(&self) {
-		self.display.display();
+	pub fn run(&self) {
+		let (tx, rx): (Sender<bool>, Receiver<bool>) = mpsc::channel();
+		let child = self.display.display(rx);
+		
+		// TODO: add a check for ending the display thread here
+		let _ = tx.send(true);
 	}
 }

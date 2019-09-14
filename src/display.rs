@@ -1,23 +1,25 @@
-use sdl2::keyboard::KeyboardState;
+
 use sdl2::rect::Rect;
 use sdl2::pixels::Color;
 use sdl2::event::Event;
-use sdl2::keyboard::Keycode;
-use std::time::Duration;
+use std::thread;
+use std::sync::mpsc::channel;
+use std::sync::mpsc::{self, TryRecvError};
 
+const WINDOW_HEIGHT: u32 = 800;
+const WINDOW_WIDTH: u32 = 600;
 const ROWS: usize = 64;
 const COLS: usize = 32;
 
 pub struct Display {
-    
-    pub position: [bool; ROWS * COLS],
+    pub buffer: [bool; ROWS * COLS],
 }
 
 impl Display {
     pub fn new() -> Display {
         let array: [bool; ROWS * COLS] = [false; ROWS * COLS];
         Display {
-            position: array,
+            buffer: array,
         }
     }
 
@@ -29,30 +31,46 @@ impl Display {
         COLS
     }
 
-    pub fn display(&self) {
-        let sdl_context = sdl2::init().unwrap();
-        let video_subsystem = sdl_context.video().unwrap();
+    pub fn display(&self, rx: std::sync::mpsc::Receiver<bool>) -> std::thread::JoinHandle<()> {
 
-        let window = video_subsystem.window("Chip-8", 800, 600)
-            .position_centered()
-            .build()
-            .unwrap();
+        let child = thread::spawn(move || {
+            let rect_height = WINDOW_HEIGHT / ROWS as u32;
+            let rect_width = WINDOW_WIDTH / COLS as u32;
 
-        let mut canvas = window.into_canvas().build().unwrap();
-        
-        let mut event_pump = sdl_context.event_pump().unwrap();
+            let sdl_context = sdl2::init().unwrap();
+            let video_subsystem = sdl_context.video().unwrap();
 
-        'main: loop {
-            // TODO: Add display drawing here
-            canvas.set_draw_color(Color::RGB(255,255,255));
-            canvas.clear();
-            canvas.present();
-            for event in event_pump.poll_iter() {
-                match event {
-                    Event::Quit {..} => break 'main,
-                    _ => {}
+            let window = video_subsystem.window("Chip-8", WINDOW_HEIGHT, WINDOW_WIDTH)
+                .position_centered()
+                .build()
+                .unwrap();
+
+            let mut canvas = window.into_canvas().build().unwrap();
+            
+            let mut event_pump = sdl_context.event_pump().unwrap();
+
+            'main: loop {
+                // TODO: Add display drawing here
+                canvas.set_draw_color(Color::RGB(255,255,255));
+                canvas.clear();
+                canvas.present();
+
+                for event in event_pump.poll_iter() {
+                    match event {
+                        Event::Quit {..} => break 'main,
+                        _ => {}
+                    }
+                }
+                
+                match rx.try_recv() {
+                    Ok(true) | Err(TryRecvError::Disconnected) => {
+                        break 'main;
+                    }
+                    Err(TryRecvError::Empty) | Ok(false) => {}
                 }
             }
-        }
+        });
+
+        child
     }
 }
