@@ -1,12 +1,14 @@
 #![allow(dead_code)]
 #![allow(unused_mut)]
 
-//use crate::instruction;
+use crate::instruction;
 
 use sdl2::rect::Rect;
 use sdl2::pixels::Color;
 use sdl2::event::Event;
+use std::time::{Duration, Instant};
 
+const CLOCK_RATE: f64 = 600.0;
 const MEMORY_SIZE: usize = 4 * 1024;
 const NUM_STACK_FRAMES: usize = 16;
 const NUM_GENERAL_REGS: usize = 16;
@@ -31,9 +33,13 @@ pub struct Chip8 {
 }
 
 impl Chip8 {
-	pub fn new() -> Chip8 {
+	pub fn new(program: Vec<u8>) -> Chip8 {
 		let mut memory = [0; MEMORY_SIZE];
-		 Chip8 {
+		for (i, byte) in program.iter().enumerate() {
+			memory[i] = byte.clone();
+		}
+
+		Chip8 {
 			regs: [0; NUM_GENERAL_REGS],
 			i_reg: 0,
 			delay_timer: 0,
@@ -64,7 +70,29 @@ impl Chip8 {
         
         let mut event_pump = sdl_context.event_pump().unwrap();
 
+		let start = Instant::now();
+		let end = Instant::now();
+		let dt = end - start;
+
         'main: loop {
+
+			// EMULATOR LOGIC
+
+			let start = Instant::now();
+
+			if start < end {
+				let dt = end - start;
+			}
+
+			let num_instructions = dt * CLOCK_RATE as u32;
+			println!("{:?}", num_instructions);
+
+
+			let instruction = self.fetch_instruction();
+			self.execute_instruction(instruction);
+
+			// DISPLAY STUFF
+
             canvas.set_draw_color(Color::RGB(255,255,255));
             canvas.clear();
 
@@ -95,8 +123,16 @@ impl Chip8 {
                     break 'main 
                 }
             }
-        }
 
-		println!("Game loop ended");
+			let end = Instant::now();
+        }
+	}
+
+	fn fetch_instruction(&self) -> instruction::Instruction {
+		instruction::Instruction::ClearScreen
+	}
+
+	fn execute_instruction(&self, instruction: instruction::Instruction) {
+
 	}
 }
