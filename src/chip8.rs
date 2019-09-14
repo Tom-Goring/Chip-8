@@ -1,6 +1,9 @@
 #![allow(dead_code)]
 #![allow(unused_mut)]
 
+use crate::display;
+use crate::instruction;
+
 const MEMORY_SIZE: usize = 4 * 1024;
 const NUM_STACK_FRAMES: usize = 16;
 const NUM_GENERAL_REGS: usize = 16;
@@ -17,7 +20,7 @@ pub struct Chip8 {
 	memory: [u8; MEMORY_SIZE], // memory storage
 	stack: [u16; NUM_STACK_FRAMES], // stack frames
 	keyboard: [bool; NUM_KEYS], // 16 keys
-	display: [bool; DISPLAY_SIZE], // 64 * 32 display
+	display: display::Display, // 64 * 32 display
 	delay_timer: u8,
 	sound_timer: u8,
 }
@@ -35,7 +38,11 @@ impl Chip8 {
 			memory: memory,
 			stack: [0; NUM_STACK_FRAMES],
 			keyboard: [false; NUM_KEYS],
-			display: [false; DISPLAY_SIZE],
+			display: display::Display::new(),
 		 }
+	}
+
+	pub fn activate_display(&self) {
+		self.display.display();
 	}
 }
