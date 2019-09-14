@@ -65,7 +65,6 @@ impl Chip8 {
         let mut event_pump = sdl_context.event_pump().unwrap();
 
         'main: loop {
-			self.buffer[50] = true;
             canvas.set_draw_color(Color::RGB(255,255,255));
             canvas.clear();
 
@@ -74,11 +73,12 @@ impl Chip8 {
             for row in 0..ROWS {
                 black = !black;
                 for col in 0..COLS {
+					let current_index = (row * COLS) + col;
                     let x = col as i32 * PIXEL_SIZE as i32;
                     let y = row as i32 * PIXEL_SIZE as i32;
                     let rect = Rect::new(x, y, PIXEL_SIZE, PIXEL_SIZE);
 
-                    if self.buffer[col+row] {
+                    if self.buffer[current_index] {
 						canvas.set_draw_color(Color::RGB(0,0,0));
 					} else {
 						canvas.set_draw_color(Color::RGB(255,255,255));
