@@ -1,12 +1,10 @@
 #![allow(dead_code)]
 #![allow(unused_mut)]
+#![allow(unused_imports)]
+#![allow(unused_variables)]
 
-use crate::instruction;
-
-use sdl2::rect::Rect;
-use sdl2::pixels::Color;
-use sdl2::event::Event;
-use std::time::{Duration, Instant};
+use super::drivers::{DisplayDriver};
+use super::instruction;
 
 const CLOCK_RATE: f64 = 600.0;
 const MEMORY_SIZE: usize = 4 * 1024;
@@ -54,85 +52,13 @@ impl Chip8 {
 	}
 
 	pub fn run(&mut self) {
+		let sdl_context = sdl2::init().unwrap();
+		let mut display_driver = DisplayDriver::new(&sdl_context);
 
-		let window_height = 20 * COLS as u32;
-        let window_width = 20 * ROWS as u32;
+		let mut x = 0;
 
-        let sdl_context = sdl2::init().unwrap();
-        let video_subsystem = sdl_context.video().unwrap();
-
-        let window = video_subsystem.window("Chip-8", window_height, window_width)
-            .position_centered()
-            .build()
-            .unwrap();
-
-        let mut canvas = window.into_canvas().build().unwrap();
-        
-        let mut event_pump = sdl_context.event_pump().unwrap();
-
-		let start = Instant::now();
-		let end = Instant::now();
-		let dt = end - start;
-
-        'main: loop {
-
-			// EMULATOR LOGIC
-
-			let start = Instant::now();
-
-			if start < end {
-				let dt = end - start;
-			}
-
-			let num_instructions = dt * CLOCK_RATE as u32;
-			println!("{:?}", num_instructions);
-
-
-			let instruction = self.fetch_instruction();
-			self.execute_instruction(instruction);
-
-			// DISPLAY STUFF
-
-            canvas.set_draw_color(Color::RGB(255,255,255));
-            canvas.clear();
-
-            let mut black = false;
-            
-            for row in 0..ROWS {
-                black = !black;
-                for col in 0..COLS {
-					let current_index = (row * COLS) + col;
-                    let x = col as i32 * PIXEL_SIZE as i32;
-                    let y = row as i32 * PIXEL_SIZE as i32;
-                    let rect = Rect::new(x, y, PIXEL_SIZE, PIXEL_SIZE);
-
-                    if self.buffer[current_index] {
-						canvas.set_draw_color(Color::RGB(0,0,0));
-					} else {
-						canvas.set_draw_color(Color::RGB(255,255,255));
-					}
-
-                    let _ = canvas.fill_rect(rect);
-                }
-            }
-
-            canvas.present();
-
-            for event in event_pump.poll_iter() {
-                if let Event::Quit {..} = event { 
-                    break 'main 
-                }
-            }
-
-			let end = Instant::now();
-        }
-	}
-
-	fn fetch_instruction(&self) -> instruction::Instruction {
-		instruction::Instruction::ClearScreen
-	}
-
-	fn execute_instruction(&self, instruction: instruction::Instruction) {
-
+		while x != 999999999 {
+			x += 1;
+		}
 	}
 }
