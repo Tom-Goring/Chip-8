@@ -3,6 +3,7 @@ use sdl2::pixels;
 use sdl2::rect::Rect;
 use sdl2::render::Canvas;
 use sdl2::video::Window;
+use sdl2::event::Event;
 
 use crate::CHIP8_WIDTH;
 use crate::CHIP8_HEIGHT;
@@ -35,17 +36,22 @@ impl DisplayDriver {
         canvas.clear();
         canvas.present();
 
+        let mut event_pump = sdl_context.event_pump().unwrap();
+
         DisplayDriver { canvas: canvas }
     }
 
     pub fn draw(&mut self, pixel_buffer: &[bool; CHIP8_WIDTH * CHIP8_HEIGHT]) { // TODO: pass in pixel buffer to draw here
-        for row in 0..CHIP8_WIDTH {
-            for column in 0..CHIP8_HEIGHT {
-                let current_pixel_index = (row * CHIP8_WIDTH) + column;
-                self.canvas.set_draw_color(color(pixel_buffer[current_pixel_index]));
 
-                let x = row as u32 * PIXEL_SIZE;
-                let y = column as u32 * PIXEL_SIZE;
+        for row in 0..CHIP8_HEIGHT {
+            for column in 0..CHIP8_WIDTH {
+                let current_pixel_index = (row * CHIP8_WIDTH) + column;
+                if pixel_buffer[current_pixel_index] {
+                    println!("{}", current_pixel_index);
+                }
+                self.canvas.set_draw_color(color(pixel_buffer[current_pixel_index]));
+                let y = row as u32 * PIXEL_SIZE;
+                let x = column as u32 * PIXEL_SIZE;
                 let _ = self.canvas.fill_rect(Rect::new(x as i32, y as i32, PIXEL_SIZE, PIXEL_SIZE));
             }
         }
