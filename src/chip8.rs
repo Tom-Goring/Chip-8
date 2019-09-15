@@ -6,6 +6,9 @@
 use super::drivers::{DisplayDriver};
 use super::instruction;
 
+use crate::CHIP8_WIDTH;
+use crate::CHIP8_HEIGHT;
+
 const CLOCK_RATE: f64 = 600.0;
 const MEMORY_SIZE: usize = 4 * 1024;
 const NUM_STACK_FRAMES: usize = 16;
@@ -27,7 +30,7 @@ pub struct Chip8 {
 	keyboard: [bool; NUM_KEYS], // 16 keys
 	delay_timer: u8,
 	sound_timer: u8,
-	buffer: [bool; ROWS * COLS],
+	buffer: [bool; CHIP8_WIDTH * CHIP8_HEIGHT],
 }
 
 impl Chip8 {
@@ -47,7 +50,7 @@ impl Chip8 {
 			memory,
 			stack: [0; NUM_STACK_FRAMES],
 			keyboard: [false; NUM_KEYS],
-			buffer: [false; COLS * ROWS]
+			buffer: [false; CHIP8_WIDTH * CHIP8_HEIGHT]
 		 }
 	}
 
@@ -55,10 +58,6 @@ impl Chip8 {
 		let sdl_context = sdl2::init().unwrap();
 		let mut display_driver = DisplayDriver::new(&sdl_context);
 
-		let mut x = 0;
-
-		while x != 999999999 {
-			x += 1;
-		}
+		
 	}
 }

@@ -38,7 +38,25 @@ impl DisplayDriver {
         DisplayDriver { canvas: canvas }
     }
 
-    pub fn draw(&mut self) { // TODO: pass in pixel buffer to draw here
-        
+    pub fn draw(&mut self, pixel_buffer: &[bool; CHIP8_WIDTH * CHIP8_HEIGHT]) { // TODO: pass in pixel buffer to draw here
+        for row in 0..CHIP8_WIDTH {
+            for column in 0..CHIP8_HEIGHT {
+                let current_pixel_index = (row * CHIP8_WIDTH) + column;
+                self.canvas.set_draw_color(color(pixel_buffer[current_pixel_index]));
+
+                let x = row as u32 * PIXEL_SIZE;
+                let y = column as u32 * PIXEL_SIZE;
+                let _ = self.canvas.fill_rect(Rect::new(x as i32, y as i32, PIXEL_SIZE, PIXEL_SIZE));
+            }
+        }
+        self.canvas.present();
+    }
+}
+
+fn color(pixel: bool) -> pixels::Color {
+    if pixel {
+        pixels::Color::RGB(255,255,255)
+    } else {
+        pixels::Color::RGB(0,0,0)
     }
 }
