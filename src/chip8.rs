@@ -4,7 +4,7 @@
 #![allow(unused_variables)]
 
 use super::drivers::{DisplayDriver};
-use super::instruction;
+use super::instruction::{Instruction, OpCodeInstruction};
 
 use crate::CHIP8_WIDTH;
 use crate::CHIP8_HEIGHT;
@@ -22,11 +22,11 @@ const ROWS: usize = 32;
 
 pub struct Chip8 {
 	regs: [u8; NUM_GENERAL_REGS],
-	i_reg: u16, // address register
-	sp: u8, // stack pointer
-	pc: u16, // program counter
+	i_reg: usize, // address register
+	sp: usize, // stack pointer
+	pc: usize, // program counter
 	memory: [u8; MEMORY_SIZE], // memory storage
-	stack: [u16; NUM_STACK_FRAMES], // stack frames
+	stack: [usize; NUM_STACK_FRAMES], // stack frames
 	keyboard: [bool; NUM_KEYS], // 16 keys
 	delay_timer: u8,
 	sound_timer: u8,
@@ -46,7 +46,7 @@ impl Chip8 {
 			delay_timer: 0,
 			sound_timer: 0,
 			sp:  0,
-			pc: 0,
+			pc: 0x200,
 			memory,
 			stack: [0; NUM_STACK_FRAMES],
 			keyboard: [false; NUM_KEYS],
@@ -58,6 +58,132 @@ impl Chip8 {
 		let sdl_context = sdl2::init().unwrap();
 		let mut display_driver = DisplayDriver::new(&sdl_context);
 
-		
+		let instr = self.fetch_instruction();
+		println!("{:?}", instr);
+	}
+
+	fn tick(&mut self) {
+		let instruction = self.fetch_instruction();
+		self.execute_instruction(instruction);
+
+	}
+
+	fn fetch_instruction(&self) -> Instruction {
+		let opcode = (self.memory[self.pc] as u16) << 8 | (self.memory[self.pc + 1] as u16);
+		OpCodeInstruction::new(opcode).process_opcode().unwrap()
+	}
+
+	fn execute_instruction(&mut self, instruction: Instruction) {
+		match instruction {
+
+			Instruction::ClearScreen => {
+
+			},
+
+			Instruction::Return => {
+
+			},
+
+			Instruction::JMP(addr) => {
+
+			},
+
+			Instruction::CALL(addr) => {
+
+			},
+
+			Instruction::SkipIfEqualToByte(reg, value) => {
+
+			},
+
+			Instruction::SkipIfIfNotEqualToByte(reg, value) => {
+
+			},
+
+			Instruction:: => {
+
+			},
+
+			Instruction:: => {
+
+			},
+
+			Instruction:: => {
+
+			},
+
+			Instruction:: => {
+
+			},
+
+			Instruction:: => {
+
+			},
+
+			Instruction:: => {
+
+			},
+
+			Instruction:: => {
+
+			},
+
+			Instruction:: => {
+
+			},
+
+			Instruction:: => {
+
+			},
+
+			Instruction:: => {
+
+			},
+
+			Instruction:: => {
+
+			},
+
+			Instruction:: => {
+
+			},
+
+			Instruction:: => {
+
+			},
+
+			Instruction:: => {
+
+			},
+
+			Instruction:: => {
+
+			},
+
+			Instruction:: => {
+
+			},
+
+			Instruction:: => {
+
+			},
+
+			Instruction:: => {
+
+			},
+
+			Instruction:: => {
+
+			},
+
+			Instruction:: => {
+
+			},
+
+			
+
+			_ => {}
+		}
+		self.pc += 2;
 	}
 }
