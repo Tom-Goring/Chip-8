@@ -9,14 +9,10 @@ use super::instruction::{Instruction, OpCodeInstruction};
 use crate::CHIP8_WIDTH;
 use crate::CHIP8_HEIGHT;
 
-const CLOCK_RATE: f64 = 600.0;
 const MEMORY_SIZE: usize = 4 * 1024;
 const NUM_STACK_FRAMES: usize = 16;
 const NUM_GENERAL_REGS: usize = 16;
 const NUM_KEYS: usize = 16;
-const PIXEL_SIZE: u32 = 20;
-const COLS: usize = 64;
-const ROWS: usize = 32;
 
 // TODO: Finish Chip8 data structure implementation
 
