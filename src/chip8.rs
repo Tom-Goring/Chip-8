@@ -87,139 +87,177 @@ impl Chip8 {
 			},
 
 			Instruction::RET() => {
-
+				self.pc = self.stack[self.sp] - 2;
+				self.sp -= 1;
 			},
 
 			Instruction::JMP(addr) => {
-
+				self.pc = addr as usize;
 			},
 
 			Instruction::CALL(addr) => {
-
+				self.sp += 1;
+				self.stack[self.sp] = self.pc;
+				self.pc = addr as usize;
 			},
 
 			Instruction::SEQB(reg, value) => {
-
+				if self.read_register(reg) == value {
+					self.pc += 2;
+				}
 			},
 
 			Instruction::SNEQB(reg, value) => {
-
+				if self.read_register(reg) != value {
+					self.pc += 2;
+				}
 			},
 
 			Instruction::SRER(reg1, reg2) => {
-
+				if self.read_register(reg1) == self.read_register(reg2) {
+					self.pc += 2;
+				}
 			},
 
 			Instruction::LBR(reg, value) => {
-
+				self.change_register(reg, value);
 			},
 
 			Instruction::ABR(reg, value) => {
-
+				self.change_register(reg, self.read_register(reg) + value);
 			},
 
 			Instruction::LRR(reg1, reg2) => {
-
+				self.change_register(reg1, self.read_register(reg2));
 			},
 
 			Instruction::OR(reg1, reg2) => {
-
+				let value = self.regs[reg1 as usize] | self.regs[reg2 as usize];
+				self.change_register(reg1, value);
 			},
 
 			Instruction::AND(reg1, reg2) =>  {
-
+				let value = self.regs[reg1 as usize] & self.regs[reg2 as usize];
+				self.change_register(reg1, value);
 			},
 
 			Instruction::XOR(reg1, reg2) => {
-
+				let value = self.regs[reg1 as usize] ^ self.regs[reg2 as usize];
+				self.change_register(reg1, value);
 			},
 
 			Instruction::ADD(reg1, reg2) => {
-
+				let sum = self.regs[reg1] + self.regs[reg2 as usize];
+				if sum > 255 {
+					self.regs[0xF] = 1;
+				}
+				self.regs[reg1 as usize] = (sum << 8) as u8;
 			},
 
 			Instruction::SUB(reg1, reg2) => {
-
+				if self.regs[reg1 as usize] > self.regs[reg2 as usize] {
+					self.regs[0xF] = 1;
+				}
+				self.regs[reg1 as usize] = self.regs[reg1 as usize] - self.regs[reg2 as usize];
 			},
 
 			Instruction::SHR(reg) => {
-
+				if self.regs[reg as usize] & 0b1 == 1 { // The result of an and with 0b1 is the state of the rightmost bit
+					self.regs[0xF] = 1;
+				}
+				self.regs[reg as usize] >> 1;
 			},
 
 			Instruction::SUBN(reg1, reg2) => {
-
+				if self.regs[reg2 as usize] > self.regs[reg1 as usize] {
+					self.regs[0xF] = 1;
+				}
+				self.regs[reg2 as usize] = self.regs[reg2 as usize] - self.regs[reg1 as usize];
 			},
 
 			Instruction::SHL(reg) => {
-
+				if self.regs[reg as usize] >> 7 == 1 { // Moving a u8 right 7 will leave it as a binary 0/1 only
+					self.regs[0xF] = 1;
+				}
+				self.regs[reg as usize] << 1;
 			},
 
 			Instruction::SNE(reg1, reg2) => {
-
+				if self.regs[reg1 as usize] != self.regs[reg2 as usize] {
+					self.pc += 2;
+				}
 			},
 
 			Instruction::LDI(addr) => {
-
+				self.i_reg = addr as usize;
 			},
 
 			Instruction::JPV0(addr) => {
-
+				self.pc = (addr as usize) + (self.regs[0] as usize);
 			},
 
 			Instruction::RND(reg, value) => {
-
+				panic!("{:?} not currently implemented!", instruction);
 			},
 
 			Instruction::DRW(reg1, reg2, value) => {
-
+				panic!("{:?} not currently implemented!", instruction);
 			},
 
 			Instruction::SKP(reg) => {
-
+				panic!("{:?} not currently implemented!", instruction);
 			},
 
 			Instruction::SKNP(reg) => {
-
+				panic!("{:?} not currently implemented!", instruction);
 			},
 
 			Instruction::LDDV(reg) => {
-
+				panic!("{:?} not currently implemented!", instruction);
 			},
 
 			Instruction::LDK(reg) => {
-
+				panic!("{:?} not currently implemented!", instruction);
 			},
 
 			Instruction::LDVD(reg) => {
-
+				panic!("{:?} not currently implemented!", instruction);
 			},
 
 			Instruction::LDST(reg) => {
-
+				panic!("{:?} not currently implemented!", instruction);
 			},
 
 			Instruction::ADDI(reg) => {
-
+				panic!("{:?} not currently implemented!", instruction);
 			},
 
 			Instruction::LDS(reg) => {
-
+				panic!("{:?} not currently implemented!", instruction);
 			},
 
 			Instruction::BCD(reg) => {
-
+				panic!("{:?} not currently implemented!", instruction);
 			},
 
 			Instruction::SR(reg) => {
-
+				panic!("{:?} not currently implemented!", instruction);
 			},
 
 			Instruction::LR(reg) => {
-
+				panic!("{:?} not currently implemented!", instruction);
 			},
 
 			_ => {}
 		}
 		self.pc += 2;
+	}
+
+	fn read_register(&self, reg: u8) -> u8 {
+		self.regs[reg as usize] as u8
+	}
+
+	fn change_register(&self, reg: u8, value: u8) {
+		self.regs[reg as usize] = value;
 	}
 }
