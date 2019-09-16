@@ -46,7 +46,7 @@ impl Chip8 {
 			delay_timer: 0,
 			sound_timer: 0,
 			sp:  0,
-			pc: 0x200,
+			pc: 0,
 			memory,
 			stack: [0; NUM_STACK_FRAMES],
 			keyboard: [false; NUM_KEYS],
@@ -58,8 +58,16 @@ impl Chip8 {
 		let sdl_context = sdl2::init().unwrap();
 		let mut display_driver = DisplayDriver::new(&sdl_context);
 
+		self.buffer[10] = true;
+		display_driver.draw(&self.buffer);
+
 		let instr = self.fetch_instruction();
 		println!("{:?}", instr);
+		self.execute_instruction(instr);
+
+		display_driver.draw(&self.buffer);
+
+		println!("Instruction executed");
 	}
 
 	fn tick(&mut self) {
@@ -76,11 +84,13 @@ impl Chip8 {
 	fn execute_instruction(&mut self, instruction: Instruction) {
 		match instruction {
 
-			Instruction::ClearScreen => {
-
+			Instruction::CLS() => {
+				for index in 0..CHIP8_WIDTH * CHIP8_HEIGHT {
+					self.buffer[index] = false;
+				}
 			},
 
-			Instruction::Return => {
+			Instruction::RET() => {
 
 			},
 
@@ -92,95 +102,125 @@ impl Chip8 {
 
 			},
 
-			Instruction::SkipIfEqualToByte(reg, value) => {
+			Instruction::SEQB(reg, value) => {
 
 			},
 
-			Instruction::SkipIfIfNotEqualToByte(reg, value) => {
+			Instruction::SNEQB(reg, value) => {
 
 			},
 
-			Instruction:: => {
+			Instruction::SRER(reg1, reg2) => {
 
 			},
 
-			Instruction:: => {
+			Instruction::LBR(reg, value) => {
 
 			},
 
-			Instruction:: => {
+			Instruction::ABR(reg, value) => {
 
 			},
 
-			Instruction:: => {
+			Instruction::LRR(reg1, reg2) => {
 
 			},
 
-			Instruction:: => {
+			Instruction::OR(reg1, reg2) => {
 
 			},
 
-			Instruction:: => {
+			Instruction::AND(reg1, reg2) =>  {
 
 			},
 
-			Instruction:: => {
+			Instruction::XOR(reg1, reg2) => {
 
 			},
 
-			Instruction:: => {
+			Instruction::ADD(reg1, reg2) => {
 
 			},
 
-			Instruction:: => {
+			Instruction::SUB(reg1, reg2) => {
 
 			},
 
-			Instruction:: => {
+			Instruction::SHR(reg) => {
 
 			},
 
-			Instruction:: => {
+			Instruction::SUBN(reg1, reg2) => {
 
 			},
 
-			Instruction:: => {
+			Instruction::SHL(reg) => {
 
 			},
 
-			Instruction:: => {
+			Instruction::SNE(reg1, reg2) => {
 
 			},
 
-			Instruction:: => {
+			Instruction::LDI(addr) => {
 
 			},
 
-			Instruction:: => {
+			Instruction::JPV0(addr) => {
 
 			},
 
-			Instruction:: => {
+			Instruction::RND(reg, value) => {
 
 			},
 
-			Instruction:: => {
+			Instruction::DRW(reg1, reg2, value) => {
 
 			},
 
-			Instruction:: => {
+			Instruction::SKP(reg) => {
 
 			},
 
-			Instruction:: => {
+			Instruction::SKNP(reg) => {
 
 			},
 
-			Instruction:: => {
+			Instruction::LDDV(reg) => {
 
 			},
 
-			
+			Instruction::LDK(reg) => {
+
+			},
+
+			Instruction::LDVD(reg) => {
+
+			},
+
+			Instruction::LDST(reg) => {
+
+			},
+
+			Instruction::ADDI(reg) => {
+
+			},
+
+			Instruction::LDS(reg) => {
+
+			},
+
+			Instruction::BCD(reg) => {
+
+			},
+
+			Instruction::SR(reg) => {
+
+			},
+
+			Instruction::LR(reg) => {
+
+			},
 
 			_ => {}
 		}

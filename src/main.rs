@@ -18,11 +18,15 @@ const CHIP8_HEIGHT: usize = 32;
 const CHIP8_MEM: usize = 4096;
 
 fn main() {
-    let file_name = env::args().nth(1).expect("Expected a valid game name as argument!");
-	let mut file = File::open(file_name).expect("There was an issue opening the game file.");
-	let mut game_data = Vec::new();
-	file.read_to_end(&mut game_data).expect("Failure to read file.");
+    // let file_name = env::args().nth(1).expect("Expected a valid game name as argument!");
+	// let mut file = File::open(file_name).expect("There was an issue opening the game file.");
+	// let mut game_data = Vec::new();
+	// file.read_to_end(&mut game_data).expect("Failure to read file.");
+    let mut program = Vec::new();
 
-    let mut chip8 = chip8::Chip8::new(game_data);
+    program.push(0x0);
+    program.push(0xE0);
+
+    let mut chip8 = chip8::Chip8::new(program);
     chip8.run();
 }
