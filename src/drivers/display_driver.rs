@@ -45,10 +45,7 @@ impl DisplayDriver {
 
         for row in 0..CHIP8_HEIGHT {
             for column in 0..CHIP8_WIDTH {
-                let current_pixel_index = (row * CHIP8_WIDTH) + column;
-                if pixel_buffer[current_pixel_index] {
-                    println!("{}", current_pixel_index);
-                }
+                let current_pixel_index = g_index_with_cr(row, column);
                 self.canvas.set_draw_color(color(pixel_buffer[current_pixel_index]));
                 let y = row as u32 * PIXEL_SIZE;
                 let x = column as u32 * PIXEL_SIZE;
@@ -65,4 +62,14 @@ fn color(pixel: bool) -> pixels::Color {
     } else {
         pixels::Color::RGB(0,0,0)
     }
+}
+
+pub fn g_index_with_cr(row: usize, col: usize) -> usize {
+	((row * CHIP8_WIDTH) + col)
+}
+
+pub fn g_cl_with_index(index: usize) -> (usize, usize) {
+	let col = index % CHIP8_WIDTH;
+	let row = index / CHIP8_WIDTH;
+	(row, col)
 }
