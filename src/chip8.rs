@@ -26,7 +26,7 @@ pub struct Chip8 {
 	keyboard: [bool; NUM_KEYS], // 16 keys
 	delay_timer: u8,
 	sound_timer: u8,
-	buffer: [bool; CHIP8_WIDTH * CHIP8_HEIGHT],
+	buffer: [u8; CHIP8_WIDTH * CHIP8_HEIGHT],
 }
 
 impl Chip8 {
@@ -46,7 +46,7 @@ impl Chip8 {
 			memory,
 			stack: [0; NUM_STACK_FRAMES],
 			keyboard: [false; NUM_KEYS],
-			buffer: [false; CHIP8_WIDTH * CHIP8_HEIGHT]
+			buffer: [0; CHIP8_WIDTH * CHIP8_HEIGHT]
 		 }
 	}
 
@@ -54,16 +54,17 @@ impl Chip8 {
 		let sdl_context = sdl2::init().unwrap();
 		let mut display_driver = DisplayDriver::new(&sdl_context);
 
-		self.buffer[10] = true;
 		display_driver.draw(&self.buffer);
 
-		let instr = self.fetch_instruction();
-		println!("{:?}", instr);
-		self.execute_instruction(instr);
+		loop {
+			let instr = self.fetch_instruction();
+			println!("{:?}", instr);
+			self.execute_instruction(instr);
 
-		display_driver.draw(&self.buffer);
+			display_driver.draw(&self.buffer);
 
-		println!("Instruction executed");
+			println!("Instruction executed");
+		}
 	}
 
 	fn tick(&mut self) {
@@ -74,6 +75,7 @@ impl Chip8 {
 
 	fn fetch_instruction(&self) -> Instruction {
 		let opcode = (self.memory[self.pc] as u16) << 8 | (self.memory[self.pc + 1] as u16);
+		println!("OpCode: {:?}", opcode);
 		OpCodeInstruction::new(opcode).process_opcode().unwrap()
 	}
 
@@ -82,7 +84,7 @@ impl Chip8 {
 
 			Instruction::CLS() => {
 				for index in 0..CHIP8_WIDTH * CHIP8_HEIGHT {
-					self.buffer[index] = false;
+					self.buffer[index] = 0;
 				}
 			},
 
@@ -102,88 +104,89 @@ impl Chip8 {
 			},
 
 			Instruction::SEQB(reg, value) => {
-				if self.read_register(reg) == value {
+				if self.get_register(reg) == value {
 					self.pc += 2;
 				}
 			},
 
 			Instruction::SNEQB(reg, value) => {
-				if self.read_register(reg) != value {
+				if self.get_register(reg) != value {
 					self.pc += 2;
 				}
 			},
 
 			Instruction::SRER(reg1, reg2) => {
-				if self.read_register(reg1) == self.read_register(reg2) {
+				if self.get_register(reg1) == self.get_register(reg2) {
 					self.pc += 2;
 				}
 			},
 
 			Instruction::LBR(reg, value) => {
-				self.change_register(reg, value);
+				self.set_register(reg, value);
 			},
 
 			Instruction::ABR(reg, value) => {
-				self.change_register(reg, self.read_register(reg) + value);
+				self.set_register(reg, self.get_register(reg) + value);
 			},
 
 			Instruction::LRR(reg1, reg2) => {
-				self.change_register(reg1, self.read_register(reg2));
+				self.set_register(reg1, self.get_register(reg2));
 			},
 
 			Instruction::OR(reg1, reg2) => {
 				let value = self.regs[reg1 as usize] | self.regs[reg2 as usize];
-				self.change_register(reg1, value);
+				self.set_register(reg1, value);
 			},
 
 			Instruction::AND(reg1, reg2) =>  {
 				let value = self.regs[reg1 as usize] & self.regs[reg2 as usize];
-				self.change_register(reg1, value);
+				self.set_register(reg1, value);
 			},
 
 			Instruction::XOR(reg1, reg2) => {
 				let value = self.regs[reg1 as usize] ^ self.regs[reg2 as usize];
-				self.change_register(reg1, value);
+				self.set_register(reg1, value);
 			},
 
 			Instruction::ADD(reg1, reg2) => {
-				let sum = self.regs[reg1] + self.regs[reg2 as usize];
+				let sum = self.get_register(reg1) as u16 + self.get_register(reg2) as u16;
 				if sum > 255 {
-					self.regs[0xF] = 1;
+					self.set_register(0xF, 1)
 				}
-				self.regs[reg1 as usize] = (sum << 8) as u8;
+				self.set_register(reg1, sum as u8)
 			},
 
 			Instruction::SUB(reg1, reg2) => {
-				if self.regs[reg1 as usize] > self.regs[reg2 as usize] {
-					self.regs[0xF] = 1;
+				if self.get_register(reg1) > self.get_register(reg2) {
+					self.set_register(0xF, 1)
 				}
-				self.regs[reg1 as usize] = self.regs[reg1 as usize] - self.regs[reg2 as usize];
+				self.set_register(reg1, self.get_register(reg1) - self.get_register(reg2));
 			},
 
 			Instruction::SHR(reg) => {
-				if self.regs[reg as usize] & 0b1 == 1 { // The result of an and with 0b1 is the state of the rightmost bit
-					self.regs[0xF] = 1;
+				if self.get_register(reg) & 0b1 == 1 { // The result of an and with 0b1 is the state of the rightmost bit
+					self.set_register(0xF, 1)
 				}
-				self.regs[reg as usize] >> 1;
+				self.set_register(reg, self.get_register(reg) >> 1);
 			},
 
 			Instruction::SUBN(reg1, reg2) => {
-				if self.regs[reg2 as usize] > self.regs[reg1 as usize] {
-					self.regs[0xF] = 1;
+				if self.get_register(reg2) > self.get_register(reg1) {
+					self.set_register(0xF, 1)
 				}
-				self.regs[reg2 as usize] = self.regs[reg2 as usize] - self.regs[reg1 as usize];
+				self.set_register(reg2, self.get_register(reg2) - self.get_register(reg1));
 			},
 
 			Instruction::SHL(reg) => {
-				if self.regs[reg as usize] >> 7 == 1 { // Moving a u8 right 7 will leave it as a binary 0/1 only
-					self.regs[0xF] = 1;
+				
+				if self.get_register(reg) >> 7 == 1 { // Moving a u8 right 7 will leave it as a binary 0/1 only
+					self.set_register(0xF, 1)
 				}
-				self.regs[reg as usize] << 1;
+				self.set_register(reg, self.get_register(reg) << 1);
 			},
 
 			Instruction::SNE(reg1, reg2) => {
-				if self.regs[reg1 as usize] != self.regs[reg2 as usize] {
+				if self.get_register(reg1) != self.get_register(reg2) {
 					self.pc += 2;
 				}
 			},
@@ -196,12 +199,26 @@ impl Chip8 {
 				self.pc = (addr as usize) + (self.regs[0] as usize);
 			},
 
-			Instruction::RND(reg, value) => {
+			Instruction::RND(reg, num_bytes) => {
 				panic!("{:?} not currently implemented!", instruction);
 			},
 
-			Instruction::DRW(reg1, reg2, value) => {
-				panic!("{:?} not currently implemented!", instruction);
+			Instruction::DRW(reg1, reg2, num_bytes) => {
+				let x = self.get_register(reg1);
+				let y = self.get_register(reg2);
+				let first = self.i_reg;
+				let last = first + num_bytes as usize;
+
+				for byte in 0..num_bytes {
+					let y = (y + byte) as usize % CHIP8_HEIGHT; // should wrap back to top of display?
+					for bit in 0..8 {
+						let x = (x + bit) as usize % CHIP8_WIDTH; // should wrap back to start of line?
+						let bit_index = DisplayDriver::g_index_with_xy(x, y);
+						let pixel_active = self.memory[self.i_reg] >> (7 - bit) & 1; // get colour of particular bit of the current byte
+						self.set_register(0xF, pixel_active & self.buffer[bit_index] as u8);
+						self.buffer[bit_index] ^= pixel_active;
+					}
+				}
 			},
 
 			Instruction::SKP(reg) => {
@@ -253,11 +270,11 @@ impl Chip8 {
 		self.pc += 2;
 	}
 
-	fn read_register(&self, reg: u8) -> u8 {
+	fn get_register(&self, reg: u8) -> u8 {
 		self.regs[reg as usize] as u8
 	}
 
-	fn change_register(&self, reg: u8, value: u8) {
+	fn set_register(&mut self, reg: u8, value: u8) {
 		self.regs[reg as usize] = value;
 	}
 }
