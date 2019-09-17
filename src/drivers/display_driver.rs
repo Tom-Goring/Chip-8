@@ -41,28 +41,18 @@ impl DisplayDriver {
         DisplayDriver { canvas: canvas }
     }
 
-    pub fn draw(&mut self, pixel_buffer: &[u8; CHIP8_WIDTH * CHIP8_HEIGHT]) { // TODO: pass in pixel buffer to draw here
+    pub fn draw(&mut self, display: &[[u8; CHIP8_WIDTH]; CHIP8_HEIGHT]) { // TODO: pass in pixel buffer to draw here
 
         for row in 0..CHIP8_HEIGHT {
             for column in 0..CHIP8_WIDTH {
-                let current_pixel_index = DisplayDriver::g_index_with_xy(column, row);
-                self.canvas.set_draw_color(color(pixel_buffer[current_pixel_index]));
+                let color = color(display[row][column]);
+                self.canvas.set_draw_color(color);
                 let y = row as u32 * PIXEL_SIZE;
                 let x = column as u32 * PIXEL_SIZE;
                 let _ = self.canvas.fill_rect(Rect::new(x as i32, y as i32, PIXEL_SIZE, PIXEL_SIZE));
             }
         }
         self.canvas.present();
-    }
-
-    pub fn g_index_with_xy(col: usize, row: usize) -> usize {
-	    ((row * CHIP8_WIDTH) + col)
-    }
-
-    pub fn g_cl_with_index(index: usize) -> (usize, usize) {
-        let col = index % CHIP8_WIDTH;
-        let row = index / CHIP8_WIDTH;
-        (row, col)
     }
 }
 

@@ -5,6 +5,10 @@
 
 use super::drivers::{DisplayDriver};
 use super::instruction::{Instruction, OpCodeInstruction};
+use super::font::FONT_SET;
+
+use std::thread;
+use std::time::Duration;
 
 use crate::CHIP8_WIDTH;
 use crate::CHIP8_HEIGHT;
@@ -26,14 +30,33 @@ pub struct Chip8 {
 	keyboard: [bool; NUM_KEYS], // 16 keys
 	delay_timer: u8,
 	sound_timer: u8,
-	buffer: [u8; CHIP8_WIDTH * CHIP8_HEIGHT],
+	display: [[u8; CHIP8_WIDTH]; CHIP8_HEIGHT],
+	keys: [bool; NUM_KEYS],
+	waiting_on_keypress: bool,
 }
 
 impl Chip8 {
 	pub fn new(program: Vec<u8>) -> Chip8 {
 		let mut memory = [0; MEMORY_SIZE];
-		for (i, byte) in program.iter().enumerate() {
+
+		for i in 0..FONT_SET.len() {
+			memory[i] = FONT_SET[i];
+		}
+
+		for (i, &byte) in program.iter().enumerate() {
+			let addr = 0x200 + i;
+			if addr < 4096 {
+				memory[0x200 + i] = byte;
+			}
 			memory[i] = byte.clone();
+		}
+
+		let mut display = [[0 as u8; CHIP8_WIDTH]; CHIP8_HEIGHT];
+
+		for y in 0..CHIP8_HEIGHT {
+			for x in 0..CHIP8_WIDTH {
+				display[y][x] = 0;
+			}
 		}
 
 		Chip8 {
@@ -42,11 +65,13 @@ impl Chip8 {
 			delay_timer: 0,
 			sound_timer: 0,
 			sp:  0,
-			pc: 0,
+			pc: 0x200,
 			memory,
 			stack: [0; NUM_STACK_FRAMES],
 			keyboard: [false; NUM_KEYS],
-			buffer: [0; CHIP8_WIDTH * CHIP8_HEIGHT]
+			display: display,
+			keys: [false; NUM_KEYS],
+			waiting_on_keypress: false
 		 }
 	}
 
@@ -54,16 +79,26 @@ impl Chip8 {
 		let sdl_context = sdl2::init().unwrap();
 		let mut display_driver = DisplayDriver::new(&sdl_context);
 
-		display_driver.draw(&self.buffer);
+		self.memory[0x300] = 0x7C;
+		self.memory[0x301] = 0x40;
+		self.memory[0x302] = 0x40;
+		self.memory[0x303] = 0x7C;
+		self.memory[0x304] = 0x40;
+		self.memory[0x305] = 0x40;
+		self.memory[0x306] = 0x7C;
+
+		display_driver.draw(&self.display);
 
 		loop {
 			let instr = self.fetch_instruction();
 			println!("{:?}", instr);
 			self.execute_instruction(instr);
 
-			display_driver.draw(&self.buffer);
+			display_driver.draw(&self.display);
 
 			println!("Instruction executed");
+
+			thread::sleep(Duration::from_millis(1000));
 		}
 	}
 
@@ -75,7 +110,7 @@ impl Chip8 {
 
 	fn fetch_instruction(&self) -> Instruction {
 		let opcode = (self.memory[self.pc] as u16) << 8 | (self.memory[self.pc + 1] as u16);
-		println!("OpCode: {:?}", opcode);
+		println!("OpCode: {:X?}", opcode);
 		OpCodeInstruction::new(opcode).process_opcode().unwrap()
 	}
 
@@ -83,8 +118,10 @@ impl Chip8 {
 		match instruction {
 
 			Instruction::CLS() => {
-				for index in 0..CHIP8_WIDTH * CHIP8_HEIGHT {
-					self.buffer[index] = 0;
+				for row in 0..CHIP8_HEIGHT {
+					for column in 0..CHIP8_WIDTH {
+						self.display[row][column] = 0;
+					}
 				}
 			},
 
@@ -94,7 +131,7 @@ impl Chip8 {
 			},
 
 			Instruction::JMP(addr) => {
-				self.pc = addr as usize;
+				self.pc = (addr - 2) as usize;
 			},
 
 			Instruction::CALL(addr) => {
@@ -210,47 +247,60 @@ impl Chip8 {
 				let last = first + num_bytes as usize;
 
 				for byte in 0..num_bytes {
-					let y = (y + byte) as usize % CHIP8_HEIGHT; // should wrap back to top of display?
+					let y = (y as usize + byte as usize) as usize % CHIP8_HEIGHT; // should wrap back to top of display?
 					for bit in 0..8 {
 						let x = (x + bit) as usize % CHIP8_WIDTH; // should wrap back to start of line?
-						let bit_index = DisplayDriver::g_index_with_xy(x, y);
-						let pixel_active = self.memory[self.i_reg] >> (7 - bit) & 1; // get colour of particular bit of the current byte
-						self.set_register(0xF, pixel_active & self.buffer[bit_index] as u8);
-						self.buffer[bit_index] ^= pixel_active;
+						let pixel_active =  self.display[y][x]; // get colour of particular bit of the current byte
+						self.set_register(0xF, pixel_active & self.display[y][x] as u8);
+						self.display[y][x] ^= pixel_active;
 					}
 				}
 			},
 
 			Instruction::SKP(reg) => {
-				panic!("{:?} not currently implemented!", instruction);
+				if self.keys[reg as usize] == true {
+					self.pc += 2;
+				}
 			},
 
 			Instruction::SKNP(reg) => {
-				panic!("{:?} not currently implemented!", instruction);
+				if self.keys[reg as usize] != true {
+					self.pc += 2;
+				}
 			},
 
 			Instruction::LDDV(reg) => {
-				panic!("{:?} not currently implemented!", instruction);
+				self.set_register(reg, self.delay_timer);
 			},
 
 			Instruction::LDK(reg) => {
-				panic!("{:?} not currently implemented!", instruction);
+				let mut pressed_key;
+				'keyloop: loop {
+					for key in self.keys.iter() {
+						if *key {
+							pressed_key = *key;
+							break 'keyloop;
+						}
+					}
+				}
+				self.set_register(reg, pressed_key as u8);
 			},
 
 			Instruction::LDVD(reg) => {
-				panic!("{:?} not currently implemented!", instruction);
+				self.set_register(reg, self.delay_timer);
 			},
 
 			Instruction::LDST(reg) => {
-				panic!("{:?} not currently implemented!", instruction);
+				self.set_register(reg, self.sound_timer);
 			},
 
 			Instruction::ADDI(reg) => {
-				panic!("{:?} not currently implemented!", instruction);
+				self.i_reg += self.get_register(reg) as usize;
 			},
 
 			Instruction::LDS(reg) => {
-				panic!("{:?} not currently implemented!", instruction);
+				let sprite = self.get_register(reg);
+				self.i_reg = (sprite * 5) as usize;
 			},
 
 			Instruction::BCD(reg) => {
