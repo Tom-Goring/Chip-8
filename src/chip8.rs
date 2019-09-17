@@ -79,13 +79,13 @@ impl Chip8 {
 		let sdl_context = sdl2::init().unwrap();
 		let mut display_driver = DisplayDriver::new(&sdl_context);
 
-		self.memory[0x300] = 0x7C;
-		self.memory[0x301] = 0x40;
-		self.memory[0x302] = 0x40;
-		self.memory[0x303] = 0x7C;
-		self.memory[0x304] = 0x40;
-		self.memory[0x305] = 0x40;
-		self.memory[0x306] = 0x7C;
+		self.memory[0x20A] = 0x7C;
+		self.memory[0x20B] = 0x40;
+		self.memory[0x20C] = 0x40;
+		self.memory[0x20D] = 0x7C;
+		self.memory[0x20E] = 0x40;
+		self.memory[0x20F] = 0x40;
+		self.memory[0x210] = 0x7C;
 
 		display_driver.draw(&self.display);
 
@@ -246,13 +246,15 @@ impl Chip8 {
 				let first = self.i_reg;
 				let last = first + num_bytes as usize;
 
-				for byte in 0..num_bytes {
-					let y = (y as usize + byte as usize) as usize % CHIP8_HEIGHT; // should wrap back to top of display?
+				for index in 0..num_bytes {
+					let byte = self.memory[self.i_reg + index as usize];
+					let y = (y as usize + index as usize) as usize % CHIP8_HEIGHT; // should wrap back to top of display?
 					for bit in 0..8 {
 						let x = (x + bit) as usize % CHIP8_WIDTH; // should wrap back to start of line?
-						let pixel_active =  self.display[y][x]; // get colour of particular bit of the current byte
-						self.set_register(0xF, pixel_active & self.display[y][x] as u8);
-						self.display[y][x] ^= pixel_active;
+						let pixel_active_on_display =  self.display[y][x]; // get status of pixel on display for collision detection
+						let pixel_to_display = byte >> (7 - bit) & 1; // gets the specific bit of the current byte we're looking at
+						self.set_register(0xF, pixel_active_on_display & pixel_to_display); // set register 15 if a collision is detected
+						self.display[y][x] ^= pixel_to_display;
 					}
 				}
 			},
