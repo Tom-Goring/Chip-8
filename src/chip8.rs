@@ -12,8 +12,7 @@ use rand::Rng;
 
 use std::thread;
 use std::time::Duration;
-use sdl2::event::Event;
-use sdl2::keyboard::Keycode;
+
 
 use crate::CHIP8_WIDTH;
 use crate::CHIP8_HEIGHT;
@@ -87,16 +86,6 @@ impl Chip8 {
 		display_driver.draw(&self.display);
 
 		'main: loop { // fetch decode execute loop
-
-			for event in events.poll_iter() {
-				match event {
-					Event::Quit {..} => break 'main,
-					Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
-                    break 'main
-                	},
-					_ => {}
-				}
-			}
 
 			let instr = self.fetch_instruction();
 			println!("{:?}", instr);
