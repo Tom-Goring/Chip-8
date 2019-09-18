@@ -289,7 +289,7 @@ impl Chip8 {
 			},
 
 			Instruction::SKP(reg) => {
-				if self.keys[reg as usize] == true {
+				if self.keys[self.get_register(reg) as usize] == true {
 					self.pc += 4;
 				} else {
 					self.pc += 2;
@@ -297,7 +297,7 @@ impl Chip8 {
 			},
 
 			Instruction::SKNP(reg) => {
-				if self.keys[reg as usize] != true {
+				if self.keys[self.get_register(reg) as usize] != true {
 					self.pc += 4;
 				} else {
 					self.pc += 2;
