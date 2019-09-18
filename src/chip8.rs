@@ -9,6 +9,8 @@ use super::font::FONT_SET;
 
 use std::thread;
 use std::time::Duration;
+use sdl2::event::Event;
+use sdl2::keyboard::Keycode;
 
 use crate::CHIP8_WIDTH;
 use crate::CHIP8_HEIGHT;
@@ -78,6 +80,7 @@ impl Chip8 {
 	pub fn run(&mut self) {
 		let sdl_context = sdl2::init().unwrap();
 		let mut display_driver = DisplayDriver::new(&sdl_context);
+		let mut events = sdl_context.event_pump().unwrap();
 
 		self.memory[0x20A] = 0x7C;
 		self.memory[0x20B] = 0x40;
@@ -89,7 +92,18 @@ impl Chip8 {
 
 		display_driver.draw(&self.display);
 
-		loop {
+		'main: loop { // fetch decode execute loop
+
+			for event in events.poll_iter() {
+				match event {
+					Event::Quit {..} => break 'main,
+					Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
+                    break 'main
+                	},
+					_ => {}
+				}
+			}
+
 			let instr = self.fetch_instruction();
 			println!("{:?}", instr);
 			self.execute_instruction(instr);
