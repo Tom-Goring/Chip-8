@@ -3,7 +3,7 @@
 #![allow(unused_imports)]
 #![allow(unused_variables)]
 
-use super::drivers::{DisplayDriver};
+use super::drivers::{DisplayDriver, InputDriver};
 use super::instruction::{Instruction, OpCodeInstruction};
 use super::font::FONT_SET;
 
@@ -36,7 +36,6 @@ pub struct Chip8 {
 	sound_timer: u8,
 	display: [[u8; CHIP8_WIDTH]; CHIP8_HEIGHT],
 	keys: [bool; NUM_KEYS],
-	waiting_on_keypress: bool,
 }
 
 impl Chip8 {
@@ -74,26 +73,28 @@ impl Chip8 {
 			keyboard: [false; NUM_KEYS],
 			display: display,
 			keys: [false; NUM_KEYS],
-			waiting_on_keypress: false
 		 }
 	}
 
 	pub fn run(&mut self) {
 		let sdl_context = sdl2::init().unwrap();
 		let mut display_driver = DisplayDriver::new(&sdl_context);
-		let mut events = sdl_context.event_pump().unwrap();
+		let mut input_driver = InputDriver::new(&sdl_context);
 
 		display_driver.draw(&self.display);
 
 		'main: loop { // fetch decode execute loop
 
+			if let Ok(keys) = input_driver.process_inputs() {
+				self.keys = keys;
+			} else {
+				return;
+			}
+
 			let instr = self.fetch_instruction();
-			println!("{:?}", instr);
 			self.execute_instruction(instr);
 
 			display_driver.draw(&self.display);
-
-			println!("Instruction executed");
 
 			thread::sleep(Duration::from_millis(2));
 		}
@@ -107,7 +108,6 @@ impl Chip8 {
 
 	fn fetch_instruction(&self) -> Instruction {
 		let opcode = (self.memory[self.pc] as u16) << 8 | (self.memory[self.pc + 1] as u16);
-		println!("OpCode: {:X?}", opcode);
 		OpCodeInstruction::new(opcode).process_opcode().unwrap()
 	}
 
@@ -198,42 +198,37 @@ impl Chip8 {
 
 			Instruction::ADD(reg1, reg2) => {
 				let sum = self.get_register(reg1) as u16 + self.get_register(reg2) as u16;
-				if sum > 255 {
-					self.set_register(0xF, 1)
-				}
+				self.set_register(0xF, (sum > 255) as u8);
 				self.set_register(reg1, sum as u8);
 				self.pc += 2;
 			},
 
 			Instruction::SUB(reg1, reg2) => {
-				if self.get_register(reg1) > self.get_register(reg2) {
-					self.set_register(0xF, 1)
-				}
+				self.set_register(0xF, (self.get_register(reg1) > self.get_register(reg2)) as u8);
 				self.set_register(reg1, self.get_register(reg1).wrapping_sub(self.get_register(reg2)));
 				self.pc += 2;
 			},
 
 			Instruction::SHR(reg) => {
-				if self.get_register(reg) & 0b1 == 1 { // The result of an and with 0b1 is the state of the rightmost bit
-					self.set_register(0xF, 1)
-				}
+				// The result of an and with 0b1 is the state of the rightmost bit
+				self.set_register(0xF, self.get_register(reg) & 0b1);
 				self.set_register(reg, self.get_register(reg) >> 1);
 				self.pc += 2;
 			},
 
 			Instruction::SUBN(reg1, reg2) => {
 				if self.get_register(reg2) > self.get_register(reg1) {
-					self.set_register(0xF, 1)
+					self.set_register(0xF, 1);
+				} else {
+					self.set_register(0xF, 0);
 				}
-				self.set_register(reg2, self.get_register(reg2) - self.get_register(reg1));
+				self.set_register(reg2, self.get_register(reg2).wrapping_sub(self.get_register(reg1)));
 				self.pc += 2;
 			},
 
 			Instruction::SHL(reg) => {
-				
-				if self.get_register(reg) >> 7 == 1 { // Moving a u8 right 7 will leave it as a binary 0/1 only
-					self.set_register(0xF, 1)
-				}
+				// Moving a u8 right 7 will leave it as a binary 0/1 only
+				self.set_register(0xF, self.get_register(reg) >> 7);
 				self.set_register(reg, self.get_register(reg) << 1);
 				self.pc += 2;
 			},
@@ -274,7 +269,8 @@ impl Chip8 {
 						let x = (x + bit) as usize % CHIP8_WIDTH; // should wrap back to start of line?
 						let pixel_active_on_display =  self.display[y][x]; // get status of pixel on display for collision detection
 						let pixel_to_display = byte >> (7 - bit) & 1; // gets the specific bit of the current byte we're looking at
-						self.set_register(0xF, pixel_active_on_display & pixel_to_display); // set register 15 if a collision is detected
+						let collision = pixel_to_display & pixel_active_on_display;
+						self.set_register(0xF, self.get_register(0xF) | collision); // set register 15 if a collision is detected
 						self.display[y][x] ^= pixel_to_display;
 					}
 				}
