@@ -41,8 +41,8 @@ impl Chip8 {
 	pub fn new(program: Vec<u8>) -> Chip8 {
 		let mut memory = [0; MEMORY_SIZE];
 
-		for i in 0..FONT_SET.len() {
-			memory[i] = FONT_SET[i];
+		for (i, byte) in FONT_SET.iter().enumerate() {
+			memory[i] = byte.clone();
 		}
 
 		for (i, &byte) in program.iter().enumerate() {
@@ -50,7 +50,6 @@ impl Chip8 {
 			if addr < 4096 {
 				memory[0x200 + i] = byte;
 			}
-			memory[i] = byte.clone();
 		}
 
 		let mut display = [[0 as u8; CHIP8_WIDTH]; CHIP8_HEIGHT];
@@ -82,14 +81,6 @@ impl Chip8 {
 		let mut display_driver = DisplayDriver::new(&sdl_context);
 		let mut events = sdl_context.event_pump().unwrap();
 
-		self.memory[0x20A] = 0x7C;
-		self.memory[0x20B] = 0x40;
-		self.memory[0x20C] = 0x40;
-		self.memory[0x20D] = 0x7C;
-		self.memory[0x20E] = 0x40;
-		self.memory[0x20F] = 0x40;
-		self.memory[0x210] = 0x7C;
-
 		display_driver.draw(&self.display);
 
 		'main: loop { // fetch decode execute loop
@@ -112,7 +103,7 @@ impl Chip8 {
 
 			println!("Instruction executed");
 
-			thread::sleep(Duration::from_millis(1000));
+			thread::sleep(Duration::from_millis(100));
 		}
 	}
 
@@ -137,15 +128,17 @@ impl Chip8 {
 						self.display[row][column] = 0;
 					}
 				}
+				self.pc += 2;
 			},
 
 			Instruction::RET() => {
-				self.pc = self.stack[self.sp] - 2;
+				self.pc = self.stack[self.sp];
 				self.sp -= 1;
+				self.pc += 2;
 			},
 
 			Instruction::JMP(addr) => {
-				self.pc = (addr - 2) as usize;
+				self.pc = (addr) as usize;
 			},
 
 			Instruction::CALL(addr) => {
@@ -156,47 +149,59 @@ impl Chip8 {
 
 			Instruction::SEQB(reg, value) => {
 				if self.get_register(reg) == value {
+					self.pc += 4;
+				} else {
 					self.pc += 2;
 				}
 			},
 
 			Instruction::SNEQB(reg, value) => {
 				if self.get_register(reg) != value {
+					self.pc += 4;
+				} else {
 					self.pc += 2;
 				}
 			},
 
 			Instruction::SRER(reg1, reg2) => {
 				if self.get_register(reg1) == self.get_register(reg2) {
+					self.pc += 4;
+				} else {
 					self.pc += 2;
 				}
 			},
 
 			Instruction::LBR(reg, value) => {
 				self.set_register(reg, value);
+				self.pc += 2;
 			},
 
 			Instruction::ABR(reg, value) => {
-				self.set_register(reg, self.get_register(reg) + value);
+				self.set_register(reg, value.wrapping_add(self.get_register(reg)));
+				self.pc += 2;
 			},
 
 			Instruction::LRR(reg1, reg2) => {
 				self.set_register(reg1, self.get_register(reg2));
+				self.pc += 2;
 			},
 
 			Instruction::OR(reg1, reg2) => {
 				let value = self.regs[reg1 as usize] | self.regs[reg2 as usize];
 				self.set_register(reg1, value);
+				self.pc += 2;
 			},
 
 			Instruction::AND(reg1, reg2) =>  {
 				let value = self.regs[reg1 as usize] & self.regs[reg2 as usize];
 				self.set_register(reg1, value);
+				self.pc += 2;
 			},
 
 			Instruction::XOR(reg1, reg2) => {
 				let value = self.regs[reg1 as usize] ^ self.regs[reg2 as usize];
 				self.set_register(reg1, value);
+				self.pc += 2;
 			},
 
 			Instruction::ADD(reg1, reg2) => {
@@ -204,7 +209,8 @@ impl Chip8 {
 				if sum > 255 {
 					self.set_register(0xF, 1)
 				}
-				self.set_register(reg1, sum as u8)
+				self.set_register(reg1, sum as u8);
+				self.pc += 2;
 			},
 
 			Instruction::SUB(reg1, reg2) => {
@@ -212,6 +218,7 @@ impl Chip8 {
 					self.set_register(0xF, 1)
 				}
 				self.set_register(reg1, self.get_register(reg1) - self.get_register(reg2));
+				self.pc += 2;
 			},
 
 			Instruction::SHR(reg) => {
@@ -219,6 +226,7 @@ impl Chip8 {
 					self.set_register(0xF, 1)
 				}
 				self.set_register(reg, self.get_register(reg) >> 1);
+				self.pc += 2;
 			},
 
 			Instruction::SUBN(reg1, reg2) => {
@@ -226,6 +234,7 @@ impl Chip8 {
 					self.set_register(0xF, 1)
 				}
 				self.set_register(reg2, self.get_register(reg2) - self.get_register(reg1));
+				self.pc += 2;
 			},
 
 			Instruction::SHL(reg) => {
@@ -234,16 +243,20 @@ impl Chip8 {
 					self.set_register(0xF, 1)
 				}
 				self.set_register(reg, self.get_register(reg) << 1);
+				self.pc += 2;
 			},
 
 			Instruction::SNE(reg1, reg2) => {
 				if self.get_register(reg1) != self.get_register(reg2) {
+					self.pc += 4;
+				} else {
 					self.pc += 2;
 				}
 			},
 
 			Instruction::LDI(addr) => {
 				self.i_reg = addr as usize;
+				self.pc += 2;
 			},
 
 			Instruction::JPV0(addr) => {
@@ -271,22 +284,28 @@ impl Chip8 {
 						self.display[y][x] ^= pixel_to_display;
 					}
 				}
+				self.pc += 2;
 			},
 
 			Instruction::SKP(reg) => {
 				if self.keys[reg as usize] == true {
+					self.pc += 4;
+				} else {
 					self.pc += 2;
 				}
 			},
 
 			Instruction::SKNP(reg) => {
 				if self.keys[reg as usize] != true {
+					self.pc += 4;
+				} else {
 					self.pc += 2;
 				}
 			},
 
 			Instruction::LDDV(reg) => {
 				self.set_register(reg, self.delay_timer);
+				self.pc += 2;
 			},
 
 			Instruction::LDK(reg) => {
@@ -300,23 +319,28 @@ impl Chip8 {
 					}
 				}
 				self.set_register(reg, pressed_key as u8);
+				self.pc += 2;
 			},
 
 			Instruction::LDVD(reg) => {
 				self.set_register(reg, self.delay_timer);
+				self.pc += 2;
 			},
 
 			Instruction::LDST(reg) => {
 				self.set_register(reg, self.sound_timer);
+				self.pc += 2;
 			},
 
 			Instruction::ADDI(reg) => {
 				self.i_reg += self.get_register(reg) as usize;
+				self.pc += 2;
 			},
 
 			Instruction::LDS(reg) => {
 				let sprite = self.get_register(reg);
 				self.i_reg = (sprite * 5) as usize;
+				self.pc += 2;
 			},
 
 			Instruction::BCD(reg) => {
@@ -333,7 +357,6 @@ impl Chip8 {
 
 			_ => {}
 		}
-		self.pc += 2;
 	}
 
 	fn get_register(&self, reg: u8) -> u8 {

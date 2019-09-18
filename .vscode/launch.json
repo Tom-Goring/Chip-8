@@ -9,7 +9,7 @@
             "request": "launch",
             "name": "Debug",
             "program": "${workspaceFolder}/target/debug/chip_8",
-            "args": ["Cave.ch8"],
+            "args": ["BC_test.ch8"],
             "cwd": "${workspaceFolder}",
             "sourceLanguages": ["rust"]
         }
