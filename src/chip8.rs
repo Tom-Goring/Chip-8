@@ -102,8 +102,7 @@ impl Chip8 {
 			println!("{:?}", instr);
 			self.execute_instruction(instr);
 
-			display_driver.draw(&self.display); // consider adding check to see if display has changed
-												// to try getting rid of annoying flashing
+			display_driver.draw(&self.display);
 
 			println!("Instruction executed");
 
