@@ -93,10 +93,6 @@ impl Chip8 {
 				return;
 			}
 
-			if self.delay_timer > 0 {
-				println!("{}", self.delay_timer);
-			}
-
 			if instructions_executed > 8 { // 500 / 60 is ~ 8. 500 cycles per second, so this block is executed once every 1/60th of a second (hopefully)
 				if self.delay_timer > 0 {
 					self.delay_timer -= 1;
@@ -324,12 +320,12 @@ impl Chip8 {
 			},
 
 			Instruction::LDVD(reg) => {
-				self.set_register(reg, self.delay_timer);
+				self.delay_timer = self.get_register(reg);
 				self.pc += 2;
 			},
 
 			Instruction::LDST(reg) => {
-				self.set_register(reg, self.sound_timer);
+				self.sound_timer = self.get_register(reg);
 				self.pc += 2;
 			},
 
