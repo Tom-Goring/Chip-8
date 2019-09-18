@@ -7,6 +7,9 @@ use super::drivers::{DisplayDriver};
 use super::instruction::{Instruction, OpCodeInstruction};
 use super::font::FONT_SET;
 
+use rand;
+use rand::Rng;
+
 use std::thread;
 use std::time::Duration;
 use sdl2::event::Event;
@@ -99,11 +102,12 @@ impl Chip8 {
 			println!("{:?}", instr);
 			self.execute_instruction(instr);
 
-			display_driver.draw(&self.display);
+			display_driver.draw(&self.display); // consider adding check to see if display has changed
+												// to try getting rid of annoying flashing
 
 			println!("Instruction executed");
 
-			thread::sleep(Duration::from_millis(100));
+			thread::sleep(Duration::from_millis(2));
 		}
 	}
 
@@ -217,7 +221,7 @@ impl Chip8 {
 				if self.get_register(reg1) > self.get_register(reg2) {
 					self.set_register(0xF, 1)
 				}
-				self.set_register(reg1, self.get_register(reg1) - self.get_register(reg2));
+				self.set_register(reg1, self.get_register(reg1).wrapping_sub(self.get_register(reg2)));
 				self.pc += 2;
 			},
 
@@ -264,7 +268,9 @@ impl Chip8 {
 			},
 
 			Instruction::RND(reg, num_bytes) => {
-				panic!("{:?} not currently implemented!", instruction);
+				let mut rng = rand::thread_rng();
+				self.set_register(reg, rng.gen::<u8>() & num_bytes);
+				self.pc += 2;
 			},
 
 			Instruction::DRW(reg1, reg2, num_bytes) => {
@@ -344,15 +350,25 @@ impl Chip8 {
 			},
 
 			Instruction::BCD(reg) => {
-				panic!("{:?} not currently implemented!", instruction);
+				self.memory[self.i_reg] = self.get_register(reg) / 100;
+				self.memory[self.i_reg + 1] = (self.get_register(reg) % 100) / 10;
+				self.memory[self.i_reg + 2] = self.get_register(reg) % 10;
+				self.pc += 2;
 			},
 
 			Instruction::SR(reg) => {
-				panic!("{:?} not currently implemented!", instruction);
+				for x in 0..reg + 1 {
+					let value = self.get_register(reg);
+					self.memory[self.i_reg + x as usize] = value;
+				}
+				self.pc += 2;
 			},
 
 			Instruction::LR(reg) => {
-				panic!("{:?} not currently implemented!", instruction);
+				for x in 0..reg + 1 {
+					self.set_register(x, self.memory[self.i_reg + x as usize]);
+				}
+				self.pc += 2;
 			},
 
 			_ => {}
