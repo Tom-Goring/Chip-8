@@ -97,7 +97,7 @@ impl Chip8 {
 				println!("{}", self.delay_timer);
 			}
 
-			if instructions_executed > 8 {
+			if instructions_executed > 8 { // 500 / 60 is ~ 8. 500 cycles per second, so this block is executed once every 1/60th of a second (hopefully)
 				if self.delay_timer > 0 {
 					self.delay_timer -= 1;
 				}
