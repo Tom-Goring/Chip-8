@@ -12,3 +12,4 @@ path = "src/main.rs"
 
 [dependencies]
 sdl2 = "0.32"
+rand = "0.7"
