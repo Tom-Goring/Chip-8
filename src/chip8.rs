@@ -83,6 +83,8 @@ impl Chip8 {
 
 		display_driver.draw(&self.display);
 
+		let mut instructions_executed = 0;
+
 		'main: loop { // fetch decode execute loop
 
 			if let Ok(keys) = input_driver.process_inputs() {
@@ -91,19 +93,28 @@ impl Chip8 {
 				return;
 			}
 
+			if self.delay_timer > 0 {
+				println!("{}", self.delay_timer);
+			}
+
+			if instructions_executed > 8 {
+				if self.delay_timer > 0 {
+					self.delay_timer -= 1;
+				}
+				if self.sound_timer > 0 {
+					self.sound_timer -= 1;
+				}
+				instructions_executed = 0;
+			}
+
 			let instr = self.fetch_instruction();
 			self.execute_instruction(instr);
 
 			display_driver.draw(&self.display);
 
+			instructions_executed += 1;
 			thread::sleep(Duration::from_millis(2));
 		}
-	}
-
-	fn tick(&mut self) {
-		let instruction = self.fetch_instruction();
-		self.execute_instruction(instruction);
-
 	}
 
 	fn fetch_instruction(&self) -> Instruction {
