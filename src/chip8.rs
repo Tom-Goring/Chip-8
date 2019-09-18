@@ -342,7 +342,7 @@ impl Chip8 {
 
 			Instruction::SR(reg) => {
 				for x in 0..reg + 1 {
-					let value = self.get_register(reg);
+					let value = self.get_register(x);
 					self.memory[self.i_reg + x as usize] = value;
 				}
 				self.pc += 2;
