@@ -84,6 +84,7 @@ impl Chip8 {
 		display_driver.draw(&self.display);
 
 		let mut instructions_executed = 0;
+		let mut draw_delay = 0;
 
 		'main: loop { // fetch decode execute loop
 
@@ -103,11 +104,15 @@ impl Chip8 {
 				instructions_executed = 0;
 			}
 
+			if draw_delay > 500 {
+				display_driver.draw(&self.display);
+				draw_delay = 0;
+			}
+
 			let instr = self.fetch_instruction();
 			self.execute_instruction(instr);
 
-			display_driver.draw(&self.display);
-
+			draw_delay += 1;
 			instructions_executed += 1;
 			thread::sleep(Duration::from_millis(2));
 		}
