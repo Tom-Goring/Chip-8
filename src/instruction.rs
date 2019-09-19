@@ -1,12 +1,8 @@
-#![allow(dead_code)]
-// TODO: Finish instruction implementation
-
 pub type Address = u16;
 pub type Register = u8;
 
 #[derive(Debug)]
 pub enum Instruction {
-	SYS(Address),
 	CLS(),
 	RET(),
 	JMP(Address),

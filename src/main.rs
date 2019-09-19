@@ -1,8 +1,3 @@
-#![allow(dead_code)]
-#![allow(unused_mut)]
-#![allow(unused_imports)]
-#![allow(unused_variables)]
-
 extern crate sdl2;
 
 use std::env;
@@ -16,7 +11,6 @@ mod chip8;
 
 const CHIP8_WIDTH: usize = 64;
 const CHIP8_HEIGHT: usize = 32;
-const CHIP8_MEM: usize = 4096;
 
 fn main() {
     let file_name = env::args().nth(1).expect("Expected a valid game name as argument!");

@@ -3,7 +3,6 @@ use sdl2::pixels;
 use sdl2::rect::Rect;
 use sdl2::render::Canvas;
 use sdl2::video::Window;
-use sdl2::event::Event;
 
 use crate::CHIP8_WIDTH;
 use crate::CHIP8_HEIGHT;
@@ -36,9 +35,7 @@ impl DisplayDriver {
         canvas.clear();
         canvas.present();
 
-        let mut event_pump = sdl_context.event_pump().unwrap();
-
-        DisplayDriver { canvas: canvas }
+        DisplayDriver { canvas }
     }
 
     pub fn draw(&mut self, display: &[[u8; CHIP8_WIDTH]; CHIP8_HEIGHT]) { // TODO: pass in pixel buffer to draw here
