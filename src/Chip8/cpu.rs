@@ -1,59 +1,94 @@
-use super::drivers::{DisplayDriver, InputDriver, AudioDriver};
-use super::instruction::{Instruction, OpCodeInstruction};
+extern crate web_sys;
+
+// A macro to provide `println!(..)`-style syntax for `console.log` logging.
+macro_rules! log {
+    ( $( $t:tt )* ) => {
+        web_sys::console::log_1(&format!( $( $t )* ).into());
+    }
+}
+
+use std::ops::BitXorAssign;
+
+use wasm_bindgen::prelude::*;
+
 use super::font::FONT_SET;
+use super::instruction::{Instruction, OpCodeInstruction};
 
 use rand;
 use rand::Rng;
 
-use std::thread;
-use std::time::Duration;
+#[repr(u8)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Pixel {
+    OFF = 0,
+    ON = 1,
+}
 
-
-use crate::CHIP8_WIDTH;
-use crate::CHIP8_HEIGHT;
-
+const CHIP8_WIDTH: u32 = 64;
+const CHIP8_HEIGHT: u32 = 32;
 const MEMORY_SIZE: usize = 4 * 1024;
 const NUM_STACK_FRAMES: usize = 16;
 const NUM_GENERAL_REGS: usize = 16;
 const NUM_KEYS: usize = 16;
 
-pub struct Chip8 {
-	regs: [u8; NUM_GENERAL_REGS],
+#[wasm_bindgen]
+pub struct CPU {
+    regs: [u8; NUM_GENERAL_REGS],
 	i_reg: usize, // address register
 	sp: usize, // stack pointer
 	pc: usize, // program counter
 	memory: [u8; MEMORY_SIZE], // memory storage
-	stack: [usize; NUM_STACK_FRAMES], // stack frames
+	stack: [u8; NUM_STACK_FRAMES], // stack frames
 	delay_timer: u8,
 	sound_timer: u8,
-	display: [[u8; CHIP8_WIDTH]; CHIP8_HEIGHT],
+	display: Vec<Pixel>,
 	keys: [bool; NUM_KEYS],
 }
 
-impl Chip8 {
-	pub fn new(program: Vec<u8>) -> Chip8 {
+#[wasm_bindgen]
+impl CPU {
+    pub fn new() -> CPU {
+		log!("CPU.new()");
+		crate::utils::set_panic_hook();
 		let mut memory = [0; MEMORY_SIZE];
 
 		for (i, byte) in FONT_SET.iter().enumerate() {
 			memory[i] = *byte;
 		}
 
-		for (i, &byte) in program.iter().enumerate() {
+		let mut game_data = Vec::new();
+		// file.read_to_end(&mut game_data).expect("Failure to read file.");
+
+		game_data.push(0xA2);
+		game_data.push(0x0A);
+		game_data.push(0x60);
+		game_data.push(0x0A);
+		game_data.push(0x61);
+		game_data.push(0x05);
+		game_data.push(0xD0);
+		game_data.push(0x17);
+		game_data.push(0x12);
+		game_data.push(0x08);
+
+		// TODO: add a load function later
+		for (i, &byte) in game_data.iter().enumerate() {
 			let addr = 0x200 + i;
 			if addr < 4096 {
 				memory[0x200 + i] = byte;
 			}
 		}
 
-		let mut display = [[0 as u8; CHIP8_WIDTH]; CHIP8_HEIGHT];
+		memory[0x20A] = 0x7C;
+		memory[0x20B] = 0x40;
+		memory[0x20C] = 0x40;
+		memory[0x20D] = 0x7C;
+		memory[0x20E] = 0x40;
+		memory[0x20F] = 0x40;
+		memory[0x210] = 0x7C;
 
-		for y in 0..CHIP8_HEIGHT {
-			for x in 0..CHIP8_WIDTH {
-				display[y][x] = 0;
-			}
-		}
+		let mut display = vec![Pixel::OFF; CHIP8_HEIGHT as usize * CHIP8_WIDTH as usize];
 
-		Chip8 {
+		CPU {
 			regs: [0; NUM_GENERAL_REGS],
 			i_reg: 0,
 			delay_timer: 0,
@@ -67,46 +102,31 @@ impl Chip8 {
 		 }
 	}
 
-	pub fn run(&mut self) {
-		let sdl_context = sdl2::init().unwrap();
-		let mut display_driver = DisplayDriver::new(&sdl_context);
-		let mut input_driver = InputDriver::new(&sdl_context);
-		let audio_driver = AudioDriver::new(&sdl_context);
-
-		display_driver.draw(&self.display);
-
-		let mut instructions_executed = 0;
-
-		loop { // fetch decode execute loop
-
-			if let Ok(keys) = input_driver.process_inputs() {
-				self.keys = keys;
-			} else {
-				return;
-			}
-
-			if instructions_executed > 8 { // 500 / 60 is ~ 8. 500 cycles per second, so this block is executed once every 1/60th of a second (hopefully)
-				if self.delay_timer > 0 {
-					self.delay_timer -= 1;
-				}
-				if self.sound_timer > 0 {
-					audio_driver.start_beep();
-					self.sound_timer -= 1;
-				} else {
-					audio_driver.stop_beep();
-				}
-				instructions_executed = 0;
-			}
-
-			let instr = self.fetch_instruction();
-			self.execute_instruction(instr);
-			display_driver.draw(&self.display);
-
-			instructions_executed += 1;
-			thread::sleep(Duration::from_millis(2));
-		}
+	pub fn height(&self) -> u32 {
+		CHIP8_HEIGHT
 	}
 
+	pub fn width(&self) -> u32 {
+		CHIP8_WIDTH
+	}
+
+	pub fn pixels(&self) -> *const Pixel {
+		self.display.as_ptr()
+	}
+
+	pub fn get_index(&self, row: u32, column: u32) -> usize {
+		(row * self.width() + column) as usize
+	}
+
+	pub fn tick(&mut self) {
+		
+		let instr = self.fetch_instruction();
+		log!("{:?}", instr);
+		self.execute_instruction(instr);
+	}
+}
+
+impl CPU {
 	fn fetch_instruction(&self) -> Instruction {
 		let opcode = (self.memory[self.pc] as u16) << 8 | (self.memory[self.pc + 1] as u16);
 		OpCodeInstruction::new(opcode).process_opcode().unwrap()
@@ -117,18 +137,13 @@ impl Chip8 {
 
 			// 00E0 - Clear Screen
 			Instruction::CLS() => {
-				for row in 0..CHIP8_HEIGHT {
-					for column in 0..CHIP8_WIDTH {
-						self.display[row][column] = 0;
-					}
-				}
-				self.pc += 2;
+				// TODO: re-implement CLS
 			},
 
 			// 00EE - Return from subroutine
 			Instruction::RET() => {
 				self.sp -= 1;
-				self.pc = self.stack[self.sp];
+				self.pc = self.stack[self.sp] as usize;
 				self.pc += 2;
 			},
 
@@ -139,7 +154,7 @@ impl Chip8 {
 
 			// 2NNN - Calls subroutine at NNN
 			Instruction::CALL(addr) => {
-				self.stack[self.sp] = self.pc;
+				self.stack[self.sp] = self.pc as u8;
 				self.sp += 1;
 				self.pc = addr as usize;
 			},
@@ -281,17 +296,42 @@ impl Chip8 {
 
 			// DXYN = Draws sprite at (VX, VY) with width 8 and height N. Detects collision.
 			Instruction::DRW(reg1, reg2, num_bytes) => {
+				log!("DRAW");
 				let x = self.get_register(reg1);
 				let y = self.get_register(reg2);
 
+				log!("{}", self.i_reg);
+
+				for x in 520..520+0x200 {
+					log!("{}", self.memory[self.i_reg + x]);
+				}
+
 				for index in 0..num_bytes {
 					self.set_register(0xF, 0);
-					let y = (y + index) as usize % CHIP8_HEIGHT; // should wrap back to top of display?
+					let y = (y + index) as usize % CHIP8_HEIGHT as usize;
+
 					for bit in 0..8 {
-						let x = (x as u16 + bit as u16) as usize % CHIP8_WIDTH; // should wrap back to start of line?
+						let x = (x as u16 + bit as u16) as usize % CHIP8_WIDTH as usize;
+
+						let itx = self.get_index(y as u32, x as u32);
+
 						let pixel_to_display = (self.memory[self.i_reg + index as usize] >> (7 - bit)) & 1; // gets the specific bit of the current byte we're looking at
-						self.set_register(0xF, self.get_register(0xF) | pixel_to_display & self.display[y][x]); // set register 15 if a collision is detected
-						self.display[y][x] ^= pixel_to_display;
+
+						if self.display[itx] == Pixel::ON {
+							self.set_register(0xF, self.get_register(0xF) | pixel_to_display & 1);
+						}
+						else {
+							self.set_register(0xF, self.get_register(0xF) | pixel_to_display & 0);
+						}
+
+						if self.display[itx] == Pixel::OFF && pixel_to_display == 1 {
+							self.display[itx] = Pixel::ON;
+							log!("Turned pixel ON");
+						} 
+						else if self.display[itx] == Pixel::ON && pixel_to_display == 0 {
+							self.display[itx] = Pixel::OFF;
+							log!("Turned pixel OFF");
+						}
 					}
 				}
 				self.pc += 2;
