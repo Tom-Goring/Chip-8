@@ -1,5 +1,5 @@
-import { CPU } from "wasm-game-of-life";
-import { memory } from "wasm-game-of-life/web_emulator_bg";
+import { CPU } from "../pkg/web_emulator";
+import { memory } from "../pkg/web_emulator_bg";
 
 const CELL_SIZE = 18;
 const GRID_COLOUR = "#CCCCCC";
@@ -16,7 +16,7 @@ const height = chip8.height();
 
 // Initialize the canvas with room for all of our cells and a 1px border
 // around each of them.
-const canvas = document.getElementById("game-of-life-canvas");
+const canvas = document.getElementById("chip8-canvas");
 canvas.height = (CELL_SIZE + 1) * height + 1;
 canvas.width = (CELL_SIZE + 1) * width + 1;
 
