@@ -2,8 +2,8 @@ import { CPU } from "../pkg/web_emulator";
 import { memory } from "../pkg/web_emulator_bg";
 
 const PIXEL_SIZE = 18;
-const OFF_COLOUR = "#FFFFFF";
-const ON_COLOUR = "#000000";
+const ON_COLOUR = "#FFFFFF";
+const OFF_COLOUR = "#000000";
 
 // These must match `Cell::Alive` and `Cell::Dead` in `src/lib.rs`.
 const OFF = 0;
@@ -45,7 +45,6 @@ resetButton.addEventListener("click", event => {
   
 
 const renderLoop = () => {
-  //drawGrid();
   drawCells();
 
   chip8.tick();
@@ -92,7 +91,7 @@ const drawCells = () => {
     for (let col = 0; col < width; col++) {
       const idx = getIndex(row, col);
 
-	  ctx.fillStyle = pixels[idx] === ON ? OFF_COLOUR : ON_COLOUR;
+	  ctx.fillStyle = pixels[idx] === OFF ? OFF_COLOUR : ON_COLOUR;
 
       ctx.fillRect(
         col * (PIXEL_SIZE),
