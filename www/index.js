@@ -1,8 +1,7 @@
 import { CPU } from "../pkg/web_emulator";
 import { memory } from "../pkg/web_emulator_bg";
 
-const CELL_SIZE = 18;
-const GRID_COLOUR = "#CCCCCC";
+const PIXEL_SIZE = 18;
 const OFF_COLOUR = "#FFFFFF";
 const ON_COLOUR = "#000000";
 
@@ -17,15 +16,36 @@ const height = chip8.height();
 // Initialize the canvas with room for all of our cells and a 1px border
 // around each of them.
 const canvas = document.getElementById("chip8-canvas");
-canvas.height = (CELL_SIZE + 1) * height + 1;
-canvas.width = (CELL_SIZE + 1) * width + 1;
+canvas.height = (PIXEL_SIZE + 1) * height + 1;
+canvas.width = (PIXEL_SIZE + 1) * width + 1;
 
 const ctx = canvas.getContext("2d");
 
 let animationId = null;
 
+document.getElementById("files").addEventListener("change", handleFiles);
+
+function handleFiles() {
+	const fileList = this.files;
+	const file = fileList[0];
+	var reader = new FileReader();
+	reader.onload = function() {
+		var arrayBuffer = reader.result;
+		var gameData = new Uint8Array(arrayBuffer);
+		chip8.load(gameData);
+	};
+	reader.readAsArrayBuffer(file);
+}
+
+const resetButton = document.getElementById("reset");
+
+resetButton.addEventListener("click", event => {
+	chip8.trigger_reset();
+});
+  
+
 const renderLoop = () => {
-  drawGrid();
+  //drawGrid();
   drawCells();
 
   chip8.tick();
@@ -58,26 +78,6 @@ playPauseButton.addEventListener("click", event => {
   }
 });
 
-const drawGrid = () => {
-  ctx.beginPath();
-  ctx.lineWidth = 1 / window.devicePixelRatio;
-  ctx.strokeStyle = GRID_COLOUR;
-
-  // Vertical lines.
-  for (let i = 0; i <= width; i++) {
-    ctx.moveTo(i * (CELL_SIZE + 1) + 1, 0);
-    ctx.lineTo(i * (CELL_SIZE + 1) + 1, (CELL_SIZE + 1) * height + 1);
-  }
-
-  // Horizontal lines.
-  for (let j = 0; j <= height; j++) {
-    ctx.moveTo(0, j * (CELL_SIZE + 1) + 1);
-    ctx.lineTo((CELL_SIZE + 1) * width + 1, j * (CELL_SIZE + 1) + 1);
-  }
-
-  ctx.stroke();
-};
-
 const getIndex = (row, column) => {
   return row * width + column;
 };
@@ -92,13 +92,13 @@ const drawCells = () => {
     for (let col = 0; col < width; col++) {
       const idx = getIndex(row, col);
 
-      ctx.fillStyle = pixels[idx] === OFF ? OFF_COLOUR : ON_COLOUR;
+	  ctx.fillStyle = pixels[idx] === ON ? OFF_COLOUR : ON_COLOUR;
 
       ctx.fillRect(
-        col * (CELL_SIZE + 1) + 1,
-        row * (CELL_SIZE + 1) + 1,
-        CELL_SIZE,
-        CELL_SIZE
+        col * (PIXEL_SIZE),
+        row * (PIXEL_SIZE),
+        PIXEL_SIZE,
+        PIXEL_SIZE
       );
     }
   }
@@ -107,3 +107,4 @@ const drawCells = () => {
 };
 
 requestAnimationFrame(renderLoop);
+pause();

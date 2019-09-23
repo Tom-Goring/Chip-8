@@ -43,48 +43,20 @@ pub struct CPU {
 	sound_timer: u8,
 	display: Vec<Pixel>,
 	keys: [bool; NUM_KEYS],
+	reset: bool,
+	paused: bool,
+	data_loaded: bool,
 }
 
 #[wasm_bindgen]
 impl CPU {
     pub fn new() -> CPU {
-		log!("CPU.new()");
 		crate::utils::set_panic_hook();
 		let mut memory = [0; MEMORY_SIZE];
 
 		for (i, byte) in FONT_SET.iter().enumerate() {
 			memory[i] = *byte;
 		}
-
-		let mut game_data = Vec::new();
-		// file.read_to_end(&mut game_data).expect("Failure to read file.");
-
-		game_data.push(0xA2);
-		game_data.push(0x0A);
-		game_data.push(0x60);
-		game_data.push(0x0A);
-		game_data.push(0x61);
-		game_data.push(0x05);
-		game_data.push(0xD0);
-		game_data.push(0x17);
-		game_data.push(0x12);
-		game_data.push(0x08);
-
-		// TODO: add a load function later
-		for (i, &byte) in game_data.iter().enumerate() {
-			let addr = 0x200 + i;
-			if addr < 4096 {
-				memory[0x200 + i] = byte;
-			}
-		}
-
-		memory[0x20A] = 0x7C;
-		memory[0x20B] = 0x40;
-		memory[0x20C] = 0x40;
-		memory[0x20D] = 0x7C;
-		memory[0x20E] = 0x40;
-		memory[0x20F] = 0x40;
-		memory[0x210] = 0x7C;
 
 		let mut display = vec![Pixel::OFF; CHIP8_HEIGHT as usize * CHIP8_WIDTH as usize];
 
@@ -99,6 +71,9 @@ impl CPU {
 			stack: [0; NUM_STACK_FRAMES],
 			display,
 			keys: [false; NUM_KEYS],
+			reset: false,
+			paused: false,
+			data_loaded: false,
 		 }
 	}
 
@@ -118,8 +93,40 @@ impl CPU {
 		(row * self.width() + column) as usize
 	}
 
+	pub fn trigger_reset(&mut self) {
+		log!("Setting reset flag");
+		self.reset = true;
+		self.data_loaded = false;
+		log!("Reset flag set");
+	}
+
+	pub fn pause(&mut self) {
+		self.paused = true;
+	}
+
+	pub fn start(&mut self) {
+		self.paused = false;
+	}
+
+	pub fn load(&mut self, data: Vec<u8>) {
+		log!("{:?}", data);
+		for (i, byte) in data.iter().enumerate() {
+			self.memory[0x200 + i] = *byte;
+		}
+
+		self.data_loaded = true;
+	}
+
 	pub fn tick(&mut self) {
-		
+		if self.reset {
+			self.reset();
+		}
+		if self.paused {
+			return;
+		}
+		if !self.data_loaded {
+			return;
+		}
 		let instr = self.fetch_instruction();
 		log!("{:?}", instr);
 		self.execute_instruction(instr);
@@ -127,6 +134,45 @@ impl CPU {
 }
 
 impl CPU {
+
+	fn reset(&mut self) {
+
+		for reg in 0..NUM_GENERAL_REGS {
+			self.regs[reg] = 0;
+		}
+
+		self.i_reg = 0;
+		self.sp = 0;
+		self.pc = 0x200;
+		
+		for idx in 0..MEMORY_SIZE {
+			self.memory[idx] = 0;
+		}
+
+		for (i, byte) in FONT_SET.iter().enumerate() {
+			self.memory[i] = *byte;
+		}
+
+		for idx in 0..NUM_STACK_FRAMES {
+			self.stack[idx] = 0;
+		}
+
+		self.delay_timer = 0;
+		self.sound_timer = 0;
+
+		for idx in 0..CHIP8_HEIGHT*CHIP8_WIDTH {
+			self.display[idx as usize] = Pixel::OFF;
+		}
+
+		for key in 0..NUM_KEYS {
+			self.keys[key] = false;
+		}
+
+		self.reset = false;
+
+		log!("Reset complete");
+	}
+
 	fn fetch_instruction(&self) -> Instruction {
 		let opcode = (self.memory[self.pc] as u16) << 8 | (self.memory[self.pc + 1] as u16);
 		OpCodeInstruction::new(opcode).process_opcode().unwrap()
@@ -137,7 +183,10 @@ impl CPU {
 
 			// 00E0 - Clear Screen
 			Instruction::CLS() => {
-				// TODO: re-implement CLS
+				for idx in 0..CHIP8_HEIGHT*CHIP8_WIDTH {
+					self.display[idx as usize] = Pixel::OFF;
+				}
+				self.pc += 2;
 			},
 
 			// 00EE - Return from subroutine
@@ -296,15 +345,8 @@ impl CPU {
 
 			// DXYN = Draws sprite at (VX, VY) with width 8 and height N. Detects collision.
 			Instruction::DRW(reg1, reg2, num_bytes) => {
-				log!("DRAW");
 				let x = self.get_register(reg1);
 				let y = self.get_register(reg2);
-
-				log!("{}", self.i_reg);
-
-				for x in 520..520+0x200 {
-					log!("{}", self.memory[self.i_reg + x]);
-				}
 
 				for index in 0..num_bytes {
 					self.set_register(0xF, 0);
@@ -326,11 +368,9 @@ impl CPU {
 
 						if self.display[itx] == Pixel::OFF && pixel_to_display == 1 {
 							self.display[itx] = Pixel::ON;
-							log!("Turned pixel ON");
 						} 
 						else if self.display[itx] == Pixel::ON && pixel_to_display == 0 {
 							self.display[itx] = Pixel::OFF;
-							log!("Turned pixel OFF");
 						}
 					}
 				}
