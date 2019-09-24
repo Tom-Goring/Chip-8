@@ -38,7 +38,7 @@ pub struct CPU {
 	sp: usize, // stack pointer
 	pc: usize, // program counter
 	memory: [u8; MEMORY_SIZE], // memory storage
-	stack: [u8; NUM_STACK_FRAMES], // stack frames
+	stack: [u16; NUM_STACK_FRAMES], // stack frames
 	delay_timer: u8,
 	sound_timer: u8,
 	display: Vec<Pixel>,
@@ -109,9 +109,9 @@ impl CPU {
 	}
 
 	pub fn load(&mut self, data: Vec<u8>) {
-		log!("{:?}", data);
 		for (i, byte) in data.iter().enumerate() {
 			self.memory[0x200 + i] = *byte;
+			log!("pc: {:X} = {:X}", 0x200 + i, *byte);
 		}
 
 		self.data_loaded = true;
@@ -127,7 +127,9 @@ impl CPU {
 		if !self.data_loaded {
 			return;
 		}
+		log!("pc: {:X}", self.pc);
 		let instr = self.fetch_instruction();
+		
 		log!("{:?}", instr);
 		self.execute_instruction(instr);
 	}
@@ -175,6 +177,7 @@ impl CPU {
 
 	fn fetch_instruction(&self) -> Instruction {
 		let opcode = (self.memory[self.pc] as u16) << 8 | (self.memory[self.pc + 1] as u16);
+		log!("opcode: {:X}", opcode);
 		OpCodeInstruction::new(opcode).process_opcode().unwrap()
 	}
 
@@ -191,8 +194,11 @@ impl CPU {
 
 			// 00EE - Return from subroutine
 			Instruction::RET() => {
-				self.sp -= 1;
+				log!("addr on top of stack: {:X}", self.stack[self.sp]);
 				self.pc = self.stack[self.sp] as usize;
+				log!("pc: {:X}", self.pc);
+				log!("memory at pc: {:X}", self.memory[self.pc]);
+				self.sp -= 1;
 				self.pc += 2;
 			},
 
@@ -203,8 +209,12 @@ impl CPU {
 
 			// 2NNN - Calls subroutine at NNN
 			Instruction::CALL(addr) => {
-				self.stack[self.sp] = self.pc as u8;
+				log!("pc: {:X}", self.pc);
+				log!("memory at pc: {:X}", self.memory[self.pc]);
 				self.sp += 1;
+				self.stack[self.sp] = self.pc as u16;
+				log!("sp: {}", self.sp);
+				log!("Setting stack: {} to pc: {:X}", self.sp, self.pc);
 				self.pc = addr as usize;
 			},
 
