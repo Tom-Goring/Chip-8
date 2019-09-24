@@ -94,10 +94,8 @@ impl CPU {
 	}
 
 	pub fn trigger_reset(&mut self) {
-		log!("Setting reset flag");
 		self.reset = true;
 		self.data_loaded = false;
-		log!("Reset flag set");
 	}
 
 	pub fn pause(&mut self) {
@@ -111,7 +109,6 @@ impl CPU {
 	pub fn load(&mut self, data: Vec<u8>) {
 		for (i, byte) in data.iter().enumerate() {
 			self.memory[0x200 + i] = *byte;
-			log!("pc: {:X} = {:X}", 0x200 + i, *byte);
 		}
 
 		self.data_loaded = true;
@@ -127,10 +124,7 @@ impl CPU {
 		if !self.data_loaded {
 			return;
 		}
-		log!("pc: {:X}", self.pc);
 		let instr = self.fetch_instruction();
-		
-		log!("{:?}", instr);
 		self.execute_instruction(instr);
 	}
 }
@@ -171,13 +165,10 @@ impl CPU {
 		}
 
 		self.reset = false;
-
-		log!("Reset complete");
 	}
 
 	fn fetch_instruction(&self) -> Instruction {
 		let opcode = (self.memory[self.pc] as u16) << 8 | (self.memory[self.pc + 1] as u16);
-		log!("opcode: {:X}", opcode);
 		OpCodeInstruction::new(opcode).process_opcode().unwrap()
 	}
 
@@ -194,10 +185,7 @@ impl CPU {
 
 			// 00EE - Return from subroutine
 			Instruction::RET() => {
-				log!("addr on top of stack: {:X}", self.stack[self.sp]);
 				self.pc = self.stack[self.sp] as usize;
-				log!("pc: {:X}", self.pc);
-				log!("memory at pc: {:X}", self.memory[self.pc]);
 				self.sp -= 1;
 				self.pc += 2;
 			},
@@ -209,12 +197,8 @@ impl CPU {
 
 			// 2NNN - Calls subroutine at NNN
 			Instruction::CALL(addr) => {
-				log!("pc: {:X}", self.pc);
-				log!("memory at pc: {:X}", self.memory[self.pc]);
 				self.sp += 1;
 				self.stack[self.sp] = self.pc as u16;
-				log!("sp: {}", self.sp);
-				log!("Setting stack: {} to pc: {:X}", self.sp, self.pc);
 				self.pc = addr as usize;
 			},
 
