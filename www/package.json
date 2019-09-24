@@ -3,9 +3,6 @@
   "version": "0.1.0",
   "description": "chip-8 emulator in rust - ported to wasm",
   "main": "index.js",
-  "bin": {
-    "create-wasm-app": ".bin/create-wasm-app.js"
-  },
   "scripts": {
     "build": "webpack --config webpack.config.js",
     "start": "webpack-dev-server"
