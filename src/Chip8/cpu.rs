@@ -7,8 +7,6 @@ macro_rules! log {
     }
 }
 
-use std::ops::BitXorAssign;
-
 use wasm_bindgen::prelude::*;
 
 use super::font::FONT_SET;
@@ -43,9 +41,11 @@ pub struct CPU {
 	sound_timer: u8,
 	display: Vec<Pixel>,
 	keys: [bool; NUM_KEYS],
+
 	reset: bool,
 	paused: bool,
 	data_loaded: bool,
+	instruction_counter: i32,
 }
 
 #[wasm_bindgen]
@@ -74,6 +74,7 @@ impl CPU {
 			reset: false,
 			paused: false,
 			data_loaded: false,
+			instruction_counter: 0,
 		 }
 	}
 
@@ -114,7 +115,28 @@ impl CPU {
 		self.data_loaded = true;
 	}
 
+	pub fn set_key_array(&mut self, keys: Vec<u8>) {
+		for (idx, value) in keys.iter().enumerate() {
+			if *value != 0 {
+				self.keys[idx] = true;
+			} else {
+				self.keys[idx] = false;
+			}
+		}
+	}
+
 	pub fn tick(&mut self) {
+
+		if self.instruction_counter > 8 {
+			if self.delay_timer > 0 {
+				self.delay_timer -= 1;
+			}
+			if self.sound_timer > 0 {
+				self.sound_timer -= 1;
+			}
+			self.instruction_counter = 0;
+		}
+
 		if self.reset {
 			self.reset();
 		}
@@ -126,6 +148,7 @@ impl CPU {
 		}
 		let instr = self.fetch_instruction();
 		self.execute_instruction(instr);
+		self.instruction_counter += 1;
 	}
 }
 
@@ -294,9 +317,9 @@ impl CPU {
 			// 8XY7 - Sets VX to VY - VX. VF set to !borrow.
 			Instruction::SUBN(reg1, reg2) => {
 				if self.get_register(reg2) > self.get_register(reg1) {
-					self.set_register(0xF, 0);
-				} else {
 					self.set_register(0xF, 1);
+				} else {
+					self.set_register(0xF, 0);
 				}
 				self.set_register(reg2, self.get_register(reg2).wrapping_sub(self.get_register(reg1)));
 				self.pc += 2;
@@ -362,8 +385,11 @@ impl CPU {
 
 						if self.display[itx] == Pixel::OFF && pixel_to_display == 1 {
 							self.display[itx] = Pixel::ON;
-						} 
-						else if self.display[itx] == Pixel::ON && pixel_to_display == 0 {
+						} else if self.display[itx] == Pixel::OFF && pixel_to_display == 1 {
+							self.display[itx] = Pixel::OFF;
+						} else if self.display[itx] == Pixel::ON && pixel_to_display == 0 {
+							self.display[itx] = Pixel::ON;
+						} else {
 							self.display[itx] = Pixel::OFF;
 						}
 					}
@@ -445,20 +471,27 @@ impl CPU {
 
 			// FX55 - Stores V0 through VX in memory starting at i_reg.
 			Instruction::SR(reg) => {
+				log!("saving registers up to {:04X} at {:04X}", reg, self.i_reg);
+				log!("Memory address at {:04X} should be {:04X} after save", self.i_reg, self.get_register(reg));
 				for x in 0..=reg {
+					log!("Current register: {}", x);
 					let value = self.get_register(x);
+					log!("Value of reg{:X} we are saving is {:04X}", x, self.get_register(x));
 					self.memory[self.i_reg + x as usize] = value;
 				}
-				self.i_reg += reg as usize + 1;
+				log!("Memory address at {:04X} reads as {:04X}", self.i_reg, self.memory[self.i_reg]);
+				log!("Memory address at {:04X} reads as {:04X}", self.i_reg + 1, self.memory[self.i_reg + 1]);
 				self.pc += 2;
 			},
 
 			// FX66 - Loads V0 through VX from memory starting at i_reg.
 			Instruction::LR(reg) => {
+				log!("Loading {} registers from memory at {:04X}", reg, self.i_reg);
 				for x in 0..=reg {
+					log!("Loading {:04X} into register {} from {:04X}", self.memory[self.i_reg + x as usize], x, self.i_reg + x as usize);
 					self.set_register(x, self.memory[self.i_reg + x as usize]);
+					log!("Register {} is now {:04X}", x, self.get_register(x));
 				}
-				self.i_reg += reg as usize + 1;
 				self.pc += 2;
 			},
 		}
