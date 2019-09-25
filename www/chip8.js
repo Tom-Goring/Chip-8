@@ -192,6 +192,9 @@ setInterval(function() {
 	chip8.tick();
 }, 2);
 
-setInterval(function() {
+function draw() {
 	drawCells();
-}, 1000/60);
+	requestAnimationFrame(draw);
+}
+
+requestAnimationFrame(draw);

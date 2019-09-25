@@ -1,4 +1,5 @@
 extern crate web_sys;
+extern crate wbg_rand;
 
 // A macro to provide `println!(..)`-style syntax for `console.log` logging.
 macro_rules! log {
@@ -12,8 +13,7 @@ use wasm_bindgen::prelude::*;
 use super::font::FONT_SET;
 use super::instruction::{Instruction, OpCodeInstruction};
 
-use rand;
-use rand::Rng;
+use wbg_rand::{Rng, wasm_rng};
 
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -58,7 +58,7 @@ impl CPU {
 			memory[i] = *byte;
 		}
 
-		let mut display = vec![Pixel::OFF; CHIP8_HEIGHT as usize * CHIP8_WIDTH as usize];
+		let display = vec![Pixel::OFF; CHIP8_HEIGHT as usize * CHIP8_WIDTH as usize];
 
 		CPU {
 			regs: [0; NUM_GENERAL_REGS],
@@ -191,6 +191,7 @@ impl CPU {
 		}
 
 		self.reset = false;
+		self.data_loaded = false;
 	}
 
 	fn fetch_instruction(&self) -> Instruction {
@@ -358,8 +359,8 @@ impl CPU {
 
 			// CXNN Sets VX to random number masked by NN
 			Instruction::RND(reg, nn) => {
-				let mut rng = rand::thread_rng();
-				self.set_register(reg, rng.gen::<u8>() & nn);
+				log!("RND");
+				self.set_register(reg, wasm_rng().gen::<u8>() & nn);
 				self.pc += 2;
 			},
 
