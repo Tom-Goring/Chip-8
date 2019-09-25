@@ -108,6 +108,9 @@ impl CPU {
 	}
 
 	pub fn load(&mut self, data: Vec<u8>) {
+
+		self.reset();
+
 		for (i, byte) in data.iter().enumerate() {
 			self.memory[0x200 + i] = *byte;
 		}
@@ -471,26 +474,17 @@ impl CPU {
 
 			// FX55 - Stores V0 through VX in memory starting at i_reg.
 			Instruction::SR(reg) => {
-				log!("saving registers up to {:04X} at {:04X}", reg, self.i_reg);
-				log!("Memory address at {:04X} should be {:04X} after save", self.i_reg, self.get_register(reg));
 				for x in 0..=reg {
-					log!("Current register: {}", x);
 					let value = self.get_register(x);
-					log!("Value of reg{:X} we are saving is {:04X}", x, self.get_register(x));
 					self.memory[self.i_reg + x as usize] = value;
 				}
-				log!("Memory address at {:04X} reads as {:04X}", self.i_reg, self.memory[self.i_reg]);
-				log!("Memory address at {:04X} reads as {:04X}", self.i_reg + 1, self.memory[self.i_reg + 1]);
 				self.pc += 2;
 			},
 
 			// FX66 - Loads V0 through VX from memory starting at i_reg.
 			Instruction::LR(reg) => {
-				log!("Loading {} registers from memory at {:04X}", reg, self.i_reg);
 				for x in 0..=reg {
-					log!("Loading {:04X} into register {} from {:04X}", self.memory[self.i_reg + x as usize], x, self.i_reg + x as usize);
 					self.set_register(x, self.memory[self.i_reg + x as usize]);
-					log!("Register {} is now {:04X}", x, self.get_register(x));
 				}
 				self.pc += 2;
 			},
